@@ -1,0 +1,28 @@
+server:
+  persistentVolume:
+    size: 8Gi
+  retention: "15d"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - prometheus.INGRESS_HOST
+
+alertmanager:
+  enabled: false
+
+pushgateway:
+  enabled: false
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true

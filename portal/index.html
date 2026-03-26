@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Forge — Platform Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f172a;
+      --bg2:      #1e293b;
+      --bg3:      #334155;
+      --indigo:   #6366f1;
+      --green:    #22c55e;
+      --teal:     #06b6d4;
+      --orange:   #f59e0b;
+      --pink:     #ec4899;
+      --red:      #ef4444;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --border:   rgba(255,255,255,0.08);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,23,42,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--indigo), var(--teal));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    nav { display: flex; gap: 2rem; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+    nav a:hover { color: var(--text); }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green);
+      padding: 0.4rem 1rem;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 4rem 2rem 3rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--indigo);
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 span { color: var(--indigo); }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    .stats {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--indigo);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .section-count {
+      background: var(--bg3);
+      color: var(--muted);
+      padding: 0.2rem 0.7rem;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── STACKS GRID ── */
+    .stacks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .stack-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .stack-card:hover {
+      border-color: var(--indigo);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99,102,241,0.15);
+    }
+
+    .stack-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .stack-icon {
+      font-size: 2rem;
+    }
+
+    .stack-status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .stack-status-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .stack-name {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .stack-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+
+    .stack-tags {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      background: var(--bg3);
+      color: var(--muted);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tag-indigo { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .tag-green  { background: rgba(34,197,94,0.15);  color: #86efac; }
+    .tag-teal   { background: rgba(6,182,212,0.15);  color: #67e8f9; }
+    .tag-orange { background: rgba(245,158,11,0.15); color: #fcd34d; }
+    .tag-pink   { background: rgba(236,72,153,0.15); color: #f9a8d4; }
+
+    /* ── INFRA SECTION ── */
+    .infra-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .infra-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .infra-icon { font-size: 1.8rem; margin-bottom: 0.8rem; }
+
+    .infra-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .infra-value {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── MONITORING ── */
+    .monitoring-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .monitoring-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: all 0.2s;
+    }
+
+    .monitoring-card:hover {
+      border-color: var(--teal);
+      transform: translateY(-2px);
+    }
+
+    .monitoring-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .monitoring-card h3 { font-size: 1rem; font-weight: 600; }
+    .monitoring-card p { font-size: 0.85rem; color: var(--muted); }
+
+    /* ── WORKFLOWS ── */
+    .workflows-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .workflow-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .workflow-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .workflow-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .workflow-icon-green  { background: rgba(34,197,94,0.15); }
+    .workflow-icon-red    { background: rgba(239,68,68,0.15); }
+    .workflow-icon-blue   { background: rgba(99,102,241,0.15); }
+    .workflow-icon-teal   { background: rgba(6,182,212,0.15); }
+
+    .workflow-card h3 { font-size: 0.95rem; font-weight: 600; }
+    .workflow-card p { font-size: 0.83rem; color: var(--muted); line-height: 1.5; }
+
+    .workflow-trigger {
+      margin-top: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--bg3);
+      color: var(--muted);
+      padding: 0.3rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer span { color: var(--indigo); }
+
+    @media (max-width: 768px) {
+      nav { display: none; }
+      .stats { gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <a href="#" class="logo">
+      <div class="logo-icon">⚡</div>
+      CloudForge
+    </a>
+    <nav>
+      <a href="#stacks">Stacks</a>
+      <a href="#infrastructure">Infrastructure</a>
+      <a href="#monitoring">Monitoring</a>
+      <a href="#workflows">Workflows</a>
+    </nav>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      Platform Running
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <p class="hero-label">Mastère DevOps — SUP DE VINCI 2025-2026</p>
+    <h1>Plateforme DevOps<br><span>Cloud Forge</span></h1>
+    <p>Infrastructure multi-stack déployée sur AWS EKS via Terraform et GitHub Actions. Monitoring Prometheus + Grafana, images Docker sur ECR.</p>
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-value">6</span>
+        <span class="stat-label">Stacks déployées</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">7</span>
+        <span class="stat-label">Namespaces isolés</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">1</span>
+        <span class="stat-label">Cluster EKS</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">100%</span>
+        <span class="stat-label">Infrastructure as Code</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STACKS -->
+  <section id="stacks">
+    <div class="section-header">
+      <h2 class="section-title">Stacks</h2>
+      <span class="section-count">6</span>
+    </div>
+    <div class="stacks-grid">
+
+      <a href="http://wordpress.INGRESS_HOST" target="_blank" class="stack-card">
+        <div class="stack-card-header">
+          <span class="stack-icon">📝</span>
+          <div class="stack-status"><div class="stack-status-dot"></div> Running</div>
+        </div>
+        <div class="stack-name">WordPress</div>
+        <div class="stack-desc">CMS open-source avec base MySQL. Déployé dans le namespace stack-wordpress.</div>
+        <div class="stack-tags">
+          <span class="tag tag-indigo">stack-wordpress</span>
+          <span class="tag">MySQL 8.0</span>
+        </div>
+      </a>
+
+      <a href="http://ghost.INGRESS_HOST" target="_blank" class="stack-card">
+        <div class="stack-card-header">
+          <span class="stack-icon">👻</span>
+          <div class="stack-status"><div class="stack-status-dot"></div> Running</div>
+        </div>
+        <div class="stack-name">Ghost</div>
+        <div class="stack-desc">Plateforme de publication moderne, légère et rapide. SQLite embarqué.</div>
+        <div class="stack-tags">
+          <span class="tag tag-green">stack-ghost</span>
+          <span class="tag">Ghost 5</span>
+        </div>
+      </a>
+
+      <a href="http://gitea.INGRESS_HOST" target="_blank" class="stack-card">
+        <div class="stack-card-header">
+          <span class="stack-icon">🦊</span>
+          <div class="stack-status"><div class="stack-status-dot"></div> Running</div>
+        </div>
+        <div class="stack-name">Gitea</div>
+        <div class="stack-desc">Forge Git auto-hébergée, légère et complète. Compatible GitHub API.</div>
+        <div class="stack-tags">
+          <span class="tag tag-teal">stack-gitea</span>
+          <span class="tag">Gitea 1.21</span>
+        </div>
+      </a>
+
+      <a href="http://node-api.INGRESS_HOST" target="_blank" class="stack-card">
+        <div class="stack-card-header">
+          <span class="stack-icon">🟢</span>
+          <div class="stack-status"><div class="stack-status-dot"></div> Running</div>
+        </div>
+        <div class="stack-name">Node API</div>
+        <div class="stack-desc">API REST Express.js custom. Image buildée et pushée sur ECR à chaque déploiement.</div>
+        <div class="stack-tags">
+          <span class="tag tag-green">stack-node-api</span>
+          <span class="tag">ECR</span>
+          <span class="tag">Node 20</span>
+        </div>
+      </a>
+
+      <a href="http://flask-api.INGRESS_HOST" target="_blank" class="stack-card">
+        <div class="stack-card-header">
+          <span class="stack-icon">🐍</span>
+          <div class="stack-status"><div class="stack-status-dot"></div> Running</div>
+        </div>
+        <div class="stack-name">Flask API</div>
+        <div class="stack-desc">API REST Python Flask avec Gunicorn. Image buildée et pushée sur ECR.</div>
+        <div class="stack-tags">
+          <span class="tag tag-orange">stack-flask-api</span>
+          <span class="tag">ECR</span>
+          <span class="tag">Python 3.12</span>
+        </div>
+      </a>
+
+      <a href="http://react.INGRESS_HOST" target="_blank" class="stack-card">
+        <div class="stack-card-header">
+          <span class="stack-icon">⚛️</span>
+          <div class="stack-status"><div class="stack-status-dot"></div> Running</div>
+        </div>
+        <div class="stack-name">React App</div>
+        <div class="stack-desc">Frontend React + Vite servi via Nginx. Consomme les APIs Node et Flask.</div>
+        <div class="stack-tags">
+          <span class="tag tag-pink">stack-react</span>
+          <span class="tag">ECR</span>
+          <span class="tag">Vite</span>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- INFRASTRUCTURE -->
+  <section id="infrastructure">
+    <div class="section-header">
+      <h2 class="section-title">Infrastructure AWS</h2>
+    </div>
+    <div class="infra-grid">
+      <div class="infra-card">
+        <div class="infra-icon">☁️</div>
+        <div class="infra-name">Cloud Provider</div>
+        <div class="infra-value">Amazon Web Services</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">📍</div>
+        <div class="infra-name">Région</div>
+        <div class="infra-value">eu-west-3 (Paris)</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">⚙️</div>
+        <div class="infra-name">Cluster</div>
+        <div class="infra-value">eks-cloud-forge-prod</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">🖥️</div>
+        <div class="infra-name">Node Type</div>
+        <div class="infra-value">t3.medium × 2</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">🌐</div>
+        <div class="infra-name">VPC</div>
+        <div class="infra-value">10.0.0.0/16</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">📦</div>
+        <div class="infra-name">Registry</div>
+        <div class="infra-value">Amazon ECR</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">🗄️</div>
+        <div class="infra-name">Terraform State</div>
+        <div class="infra-value">S3 + DynamoDB</div>
+      </div>
+      <div class="infra-card">
+        <div class="infra-icon">🔀</div>
+        <div class="infra-name">Ingress</div>
+        <div class="infra-value">NGINX Ingress Controller</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MONITORING -->
+  <section id="monitoring">
+    <div class="section-header">
+      <h2 class="section-title">Monitoring</h2>
+    </div>
+    <div class="monitoring-grid">
+      <a href="http://grafana.INGRESS_HOST" target="_blank" class="monitoring-card">
+        <div class="monitoring-card-header">
+          <span style="font-size:1.8rem">📊</span>
+          <h3>Grafana</h3>
+        </div>
+        <p>Dashboards de visualisation — métriques cluster, nodes, pods et applications custom.</p>
+      </a>
+      <a href="http://prometheus.INGRESS_HOST" target="_blank" class="monitoring-card">
+        <div class="monitoring-card-header">
+          <span style="font-size:1.8rem">🔥</span>
+          <h3>Prometheus</h3>
+        </div>
+        <p>Collecte et stockage des métriques. Node Exporter + kube-state-metrics activés.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- WORKFLOWS -->
+  <section id="workflows">
+    <div class="section-header">
+      <h2 class="section-title">GitHub Actions Workflows</h2>
+    </div>
+    <div class="workflows-grid">
+      <div class="workflow-card">
+        <div class="workflow-card-header">
+          <div class="workflow-icon workflow-icon-green">🏗️</div>
+          <div>
+            <h3>Infrastructure — Deploy</h3>
+          </div>
+        </div>
+        <p>Crée le VPC, EKS, ECR, NAT Gateway et toute l'infra AWS via Terraform.</p>
+        <span class="workflow-trigger">workflow_dispatch → deploy</span>
+      </div>
+      <div class="workflow-card">
+        <div class="workflow-card-header">
+          <div class="workflow-icon workflow-icon-red">💥</div>
+          <div>
+            <h3>Infrastructure — Destroy</h3>
+          </div>
+        </div>
+        <p>Détruit toute l'infrastructure AWS. Confirmation manuelle requise via GitHub Environments.</p>
+        <span class="workflow-trigger">workflow_dispatch → destroy</span>
+      </div>
+      <div class="workflow-card">
+        <div class="workflow-card-header">
+          <div class="workflow-icon workflow-icon-blue">🚀</div>
+          <div>
+            <h3>Deploy Apps</h3>
+          </div>
+        </div>
+        <p>Build les images Docker, les push sur ECR, et déploie toutes les stacks sur EKS.</p>
+        <span class="workflow-trigger">workflow_dispatch</span>
+      </div>
+      <div class="workflow-card">
+        <div class="workflow-card-header">
+          <div class="workflow-icon workflow-icon-teal">📈</div>
+          <div>
+            <h3>Deploy Monitoring</h3>
+          </div>
+        </div>
+        <p>Déploie Prometheus et Grafana via Helm avec dashboards Kubernetes préconfigurés.</p>
+        <span class="workflow-trigger">workflow_dispatch</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Cloud Forge — Plateforme DevOps AWS &nbsp;·&nbsp; Terraform + GitHub Actions + EKS &nbsp;·&nbsp; <span>SUP DE VINCI 2025-2026</span></p>
+  </footer>
+
+</body>
+</html>

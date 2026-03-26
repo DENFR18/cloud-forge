@@ -1,0 +1,136 @@
+name: Deploy Apps
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-3
+
+jobs:
+  # ─── BUILD & PUSH custom images ────────────────────────────────────────────
+  build-push:
+    name: Build & Push Images to ECR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push node-api
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/cloud-forge/node-api:latest apps/node-api
+          docker push $ECR_REGISTRY/cloud-forge/node-api:latest
+
+      - name: Build & push flask-api
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/cloud-forge/flask-api:latest apps/flask-api
+          docker push $ECR_REGISTRY/cloud-forge/flask-api:latest
+
+      - name: Build & push react
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/cloud-forge/react:latest apps/react
+          docker push $ECR_REGISTRY/cloud-forge/react:latest
+
+  # ─── DEPLOY to EKS ─────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build-push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name eks-cloud-forge-prod
+
+      - name: Install NGINX Ingress Controller
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo update
+          helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+            --namespace ingress-nginx \
+            --create-namespace \
+            --wait \
+            --timeout 5m
+
+      - name: Get ECR registry
+        id: ecr
+        run: |
+          REGISTRY=$(aws ecr describe-repositories \
+            --repository-names cloud-forge/node-api \
+            --query 'repositories[0].repositoryUri' \
+            --output text | cut -d'/' -f1)
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+
+      - name: Apply namespaces
+        run: kubectl apply -f k8s/namespaces/
+
+      - name: Deploy apps
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          # Remplace les placeholders ECR dans les manifestes
+          sed -i "s|ECR_REGISTRY|$ECR_REGISTRY|g" k8s/node-api/stack.yaml
+          sed -i "s|ECR_REGISTRY|$ECR_REGISTRY|g" k8s/flask-api/stack.yaml
+          sed -i "s|ECR_REGISTRY|$ECR_REGISTRY|g" k8s/react/stack.yaml
+
+          kubectl apply -f k8s/wordpress/
+          kubectl apply -f k8s/ghost/
+          kubectl apply -f k8s/gitea/
+          kubectl apply -f k8s/node-api/
+          kubectl apply -f k8s/flask-api/
+          kubectl apply -f k8s/react/
+
+      - name: Apply ingress
+        run: kubectl apply -f k8s/ingress.yaml
+
+      - name: Get ingress endpoint
+        run: |
+          echo "Attente de l'assignation du Load Balancer..."
+          sleep 60
+          INGRESS_HOST=$(kubectl get svc ingress-nginx-controller \
+            -n ingress-nginx \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "================================================"
+          echo "  APPLICATIONS DEPLOYEES"
+          echo "================================================"
+          echo "Ingress endpoint : $INGRESS_HOST"
+          echo ""
+          echo "  WordPress  : http://wordpress.$INGRESS_HOST"
+          echo "  Ghost      : http://ghost.$INGRESS_HOST"
+          echo "  Gitea      : http://gitea.$INGRESS_HOST"
+          echo "  Node API   : http://node-api.$INGRESS_HOST"
+          echo "  Flask API  : http://flask-api.$INGRESS_HOST"
+          echo "  React      : http://react.$INGRESS_HOST"
+          echo "  Portal     : http://portal.$INGRESS_HOST"
