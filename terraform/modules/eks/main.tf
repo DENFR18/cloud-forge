@@ -80,7 +80,8 @@ resource "aws_eks_node_group" "main" {
   node_group_name = "ng-${var.project}-${var.environment}"
   node_role_arn   = aws_iam_role.nodes.arn
   subnet_ids      = var.private_subnet_ids
-  instance_types  = [var.node_instance_type]
+  instance_types  = ["t3.medium", "t3.large", "t2.medium"]
+  capacity_type   = "SPOT"
 
   scaling_config {
     desired_size = var.desired_size
