@@ -27,18 +27,14 @@ module "vpc" {
   tags        = local.tags
 }
 
-module "eks" {
-  source             = "./modules/eks"
-  project            = var.project
-  environment        = var.environment
-  tags               = local.tags
-  vpc_id             = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
-  public_subnet_ids  = module.vpc.public_subnet_ids
-  node_instance_type = var.eks_node_instance_type
-  desired_size       = var.eks_desired_size
-  min_size           = var.eks_min_size
-  max_size           = var.eks_max_size
+module "k3s" {
+  source            = "./modules/k3s"
+  project           = var.project
+  environment       = var.environment
+  aws_region        = var.aws_region
+  tags              = local.tags
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
 }
 
 module "ecr" {

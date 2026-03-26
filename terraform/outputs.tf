@@ -1,11 +1,6 @@
-output "cluster_name" {
-  description = "EKS cluster name"
-  value       = module.eks.cluster_name
-}
-
-output "cluster_endpoint" {
-  description = "EKS cluster endpoint"
-  value       = module.eks.cluster_endpoint
+output "master_public_ip" {
+  description = "IP publique du master k3s"
+  value       = module.k3s.master_public_ip
 }
 
 output "ecr_node_api_url" {
