@@ -131,7 +131,7 @@ resource "aws_security_group" "k3s" {
 # ─── Master Node ──────────────────────────────────────────────────────────────
 resource "aws_instance" "master" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t2.micro"
+  instance_type               = "t3.small"
   subnet_id                   = var.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   iam_instance_profile        = aws_iam_instance_profile.k3s.name
@@ -163,7 +163,7 @@ resource "aws_eip_association" "master" {
 resource "aws_instance" "workers" {
   count                       = 2
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t2.micro"
+  instance_type               = "t3.micro"
   subnet_id                   = var.public_subnet_ids[count.index % length(var.public_subnet_ids)]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   iam_instance_profile        = aws_iam_instance_profile.k3s.name
