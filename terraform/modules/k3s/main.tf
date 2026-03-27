@@ -146,8 +146,9 @@ resource "aws_instance" "master" {
   associate_public_ip_address = true
 
   user_data = base64encode(templatefile("${path.module}/templates/master.sh.tpl", {
-    region  = var.aws_region
-    project = var.project
+    region    = var.aws_region
+    project   = var.project
+    master_ip = aws_eip.master.public_ip
   }))
 
   tags = merge(var.tags, {
@@ -157,9 +158,8 @@ resource "aws_instance" "master" {
 }
 
 resource "aws_eip" "master" {
-  domain     = "vpc"
-  depends_on = [aws_instance.master]
-  tags       = merge(var.tags, { Name = "eip-master-${var.project}-${var.environment}" })
+  domain = "vpc"
+  tags   = merge(var.tags, { Name = "eip-master-${var.project}-${var.environment}" })
 }
 
 resource "aws_eip_association" "master" {
