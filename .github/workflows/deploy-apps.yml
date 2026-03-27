@@ -120,8 +120,6 @@ jobs:
           kubectl apply -f k8s/flask-api/
           kubectl apply -f k8s/react/
 
-      - name: Apply ingress
-        run: kubectl apply -f k8s/ingress.yaml
 
       - name: Get ingress endpoint
         run: |
