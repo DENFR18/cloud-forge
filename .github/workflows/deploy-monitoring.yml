@@ -28,8 +28,16 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name eks-cloud-forge-prod
+      - name: Setup kubeconfig from SSM
+        run: |
+          mkdir -p ~/.kube
+          aws ssm get-parameter \
+            --name "/cloud-forge/k3s-kubeconfig" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text \
+            --region ${{ env.AWS_REGION }} > ~/.kube/config
+          chmod 600 ~/.kube/config
 
       - name: Add Helm repositories
         run: |
@@ -61,14 +69,19 @@ jobs:
           PASSWORD=$(kubectl get secret grafana \
             -n monitoring \
             -o jsonpath="{.data.admin-password}" | base64 --decode)
-          INGRESS_HOST=$(kubectl get svc ingress-nginx-controller \
+          MASTER_IP=$(aws ssm get-parameter \
+            --name "/cloud-forge/k3s-master-ip" \
+            --query "Parameter.Value" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          NODE_PORT=$(kubectl get svc ingress-nginx-controller \
             -n ingress-nginx \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+            -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "pending")
           echo "================================================"
           echo "  MONITORING DEPLOYE"
           echo "================================================"
-          echo "  Grafana    : http://grafana.$INGRESS_HOST"
-          echo "  Prometheus : http://prometheus.$INGRESS_HOST"
+          echo "  Grafana    : http://$MASTER_IP:$NODE_PORT/grafana"
+          echo "  Prometheus : http://$MASTER_IP:$NODE_PORT/prometheus"
           echo ""
           echo "  Grafana login    : admin"
           echo "  Grafana password : $PASSWORD"

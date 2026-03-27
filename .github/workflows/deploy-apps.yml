@@ -48,9 +48,9 @@ jobs:
           docker build -t $ECR_REGISTRY/cloud-forge/react:latest apps/react
           docker push $ECR_REGISTRY/cloud-forge/react:latest
 
-  # ─── DEPLOY to EKS ─────────────────────────────────────────────────────────
+  # ─── DEPLOY to k3s ─────────────────────────────────────────────────────────
   deploy:
-    name: Deploy to EKS
+    name: Deploy to k3s
     runs-on: ubuntu-latest
     needs: build-push
 
@@ -71,8 +71,16 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name eks-cloud-forge-prod
+      - name: Setup kubeconfig from SSM
+        run: |
+          mkdir -p ~/.kube
+          aws ssm get-parameter \
+            --name "/cloud-forge/k3s-kubeconfig" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text \
+            --region ${{ env.AWS_REGION }} > ~/.kube/config
+          chmod 600 ~/.kube/config
 
       - name: Install NGINX Ingress Controller
         run: |
@@ -117,20 +125,24 @@ jobs:
 
       - name: Get ingress endpoint
         run: |
-          echo "Attente de l'assignation du Load Balancer..."
-          sleep 60
-          INGRESS_HOST=$(kubectl get svc ingress-nginx-controller \
+          MASTER_IP=$(aws ssm get-parameter \
+            --name "/cloud-forge/k3s-master-ip" \
+            --query "Parameter.Value" \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          NODE_PORT=$(kubectl get svc ingress-nginx-controller \
             -n ingress-nginx \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}')
           echo "================================================"
           echo "  APPLICATIONS DEPLOYEES"
           echo "================================================"
-          echo "Ingress endpoint : $INGRESS_HOST"
+          echo "Master IP  : $MASTER_IP"
+          echo "NodePort   : $NODE_PORT"
           echo ""
-          echo "  WordPress  : http://wordpress.$INGRESS_HOST"
-          echo "  Ghost      : http://ghost.$INGRESS_HOST"
-          echo "  Gitea      : http://gitea.$INGRESS_HOST"
-          echo "  Node API   : http://node-api.$INGRESS_HOST"
-          echo "  Flask API  : http://flask-api.$INGRESS_HOST"
-          echo "  React      : http://react.$INGRESS_HOST"
-          echo "  Portal     : http://portal.$INGRESS_HOST"
+          echo "  WordPress  : http://$MASTER_IP:$NODE_PORT"
+          echo "  Ghost      : http://$MASTER_IP:$NODE_PORT"
+          echo "  Gitea      : http://$MASTER_IP:$NODE_PORT"
+          echo "  Node API   : http://$MASTER_IP:$NODE_PORT/api"
+          echo "  Flask API  : http://$MASTER_IP:$NODE_PORT/flask"
+          echo "  React      : http://$MASTER_IP:$NODE_PORT"
+          echo "  Portal     : http://$MASTER_IP:$NODE_PORT"
