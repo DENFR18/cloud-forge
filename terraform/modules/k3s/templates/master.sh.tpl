@@ -12,6 +12,15 @@ echo "EIP: $MASTER_PUBLIC_IP"
 # Attend que le reseau soit disponible
 sleep 15
 
+# Installe AWS CLI v2
+echo "=== Installing AWS CLI ==="
+apt-get update -y
+apt-get install -y unzip curl
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+aws --version
+
 # Installe k3s
 echo "=== Installing k3s ==="
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --tls-san $MASTER_PUBLIC_IP --node-external-ip $MASTER_PUBLIC_IP" sh -
