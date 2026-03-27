@@ -4,12 +4,17 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
   }
 
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
   }
 }
 
@@ -138,7 +143,7 @@ resource "aws_key_pair" "deployer" {
 # ─── Master Node ──────────────────────────────────────────────────────────────
 resource "aws_instance" "master" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "m7i.flex.large"
+  instance_type               = "t4g.large"
   key_name                    = aws_key_pair.deployer.key_name
   subnet_id                   = var.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
@@ -171,7 +176,7 @@ resource "aws_eip_association" "master" {
 resource "aws_instance" "workers" {
   count                       = 2
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "m7i.flex.large"
+  instance_type               = "t4g.large"
   key_name                    = aws_key_pair.deployer.key_name
   subnet_id                   = var.public_subnet_ids[count.index % length(var.public_subnet_ids)]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
