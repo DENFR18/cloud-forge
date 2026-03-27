@@ -22,7 +22,7 @@ pushgateway:
   enabled: false
 
 nodeExporter:
-  enabled: true
+  enabled: false
 
 kubeStateMetrics:
-  enabled: true
+  enabled: false

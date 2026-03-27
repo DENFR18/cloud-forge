@@ -53,7 +53,6 @@ jobs:
           helm upgrade --install prometheus prometheus-community/prometheus \
             --namespace monitoring \
             --values monitoring/prometheus/values.yaml \
-            --wait \
             --timeout 5m
 
       - name: Deploy Grafana
@@ -61,7 +60,6 @@ jobs:
           helm upgrade --install grafana grafana/grafana \
             --namespace monitoring \
             --values monitoring/grafana/values.yaml \
-            --wait \
             --timeout 5m
 
       - name: Get Grafana credentials
