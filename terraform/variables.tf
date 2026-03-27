@@ -15,3 +15,8 @@ variable "environment" {
   type        = string
   default     = "prod"
 }
+
+variable "public_key" {
+  description = "SSH public key for EC2 instances"
+  type        = string
+}

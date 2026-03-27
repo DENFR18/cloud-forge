@@ -35,6 +35,7 @@ module "k3s" {
   tags              = local.tags
   vpc_id            = module.vpc.vpc_id
   public_subnet_ids = module.vpc.public_subnet_ids
+  public_key        = var.public_key
 }
 
 module "ecr" {

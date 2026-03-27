@@ -128,10 +128,18 @@ resource "aws_security_group" "k3s" {
   tags = merge(var.tags, { Name = "k3s-${var.project}-${var.environment}" })
 }
 
+# ─── Key Pair ─────────────────────────────────────────────────────────────────
+resource "aws_key_pair" "deployer" {
+  key_name   = "key-${var.project}-${var.environment}"
+  public_key = var.public_key
+  tags       = var.tags
+}
+
 # ─── Master Node ──────────────────────────────────────────────────────────────
 resource "aws_instance" "master" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.small"
+  key_name                    = aws_key_pair.deployer.key_name
   subnet_id                   = var.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   iam_instance_profile        = aws_iam_instance_profile.k3s.name
@@ -164,6 +172,7 @@ resource "aws_instance" "workers" {
   count                       = 2
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.micro"
+  key_name                    = aws_key_pair.deployer.key_name
   subnet_id                   = var.public_subnet_ids[count.index % length(var.public_subnet_ids)]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   iam_instance_profile        = aws_iam_instance_profile.k3s.name

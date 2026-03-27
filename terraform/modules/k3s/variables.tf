@@ -27,3 +27,8 @@ variable "tags" {
   description = "Tags"
   type        = map(string)
 }
+
+variable "public_key" {
+  description = "SSH public key for EC2 instances"
+  type        = string
+}
