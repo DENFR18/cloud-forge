@@ -3,9 +3,7 @@ set -e
 
 REGION="${region}"
 PROJECT="${project}"
-
-# Recupere l'IP publique du master
-MASTER_PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+MASTER_PUBLIC_IP="${master_eip}"
 
 # Installe k3s server avec TLS SAN pour l'IP publique
 curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --tls-san $MASTER_PUBLIC_IP --node-external-ip $MASTER_PUBLIC_IP" sh -

@@ -128,6 +128,12 @@ resource "aws_security_group" "k3s" {
   tags = merge(var.tags, { Name = "k3s-${var.project}-${var.environment}" })
 }
 
+# ─── Master EIP (allouée avant l'instance pour que l'adresse soit connue au démarrage) ──
+resource "aws_eip" "master" {
+  domain = "vpc"
+  tags   = merge(var.tags, { Name = "eip-master-${var.project}-${var.environment}" })
+}
+
 # ─── Master Node ──────────────────────────────────────────────────────────────
 resource "aws_instance" "master" {
   ami                         = data.aws_ami.ubuntu.id
@@ -138,20 +144,15 @@ resource "aws_instance" "master" {
   associate_public_ip_address = true
 
   user_data = base64encode(templatefile("${path.module}/templates/master.sh.tpl", {
-    region  = var.aws_region
-    project = var.project
+    region     = var.aws_region
+    project    = var.project
+    master_eip = aws_eip.master.public_ip
   }))
 
   tags = merge(var.tags, {
     Name = "k3s-master-${var.project}-${var.environment}"
     Role = "master"
   })
-}
-
-resource "aws_eip" "master" {
-  domain     = "vpc"
-  depends_on = [aws_instance.master]
-  tags       = merge(var.tags, { Name = "eip-master-${var.project}-${var.environment}" })
 }
 
 resource "aws_eip_association" "master" {
