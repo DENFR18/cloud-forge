@@ -16,7 +16,9 @@ ingress:
   enabled: true
   ingressClassName: nginx
   hosts:
-    - grafana.INGRESS_HOST
+    - ""
+  path: /grafana
+  pathType: Prefix
 
 datasources:
   datasources.yaml:

@@ -13,7 +13,9 @@ server:
     enabled: true
     ingressClassName: nginx
     hosts:
-      - prometheus.INGRESS_HOST
+      - ""
+    path: /prometheus
+    pathType: Prefix
 
 alertmanager:
   enabled: false
