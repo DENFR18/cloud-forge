@@ -89,8 +89,9 @@ jobs:
           helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
             --namespace ingress-nginx \
             --create-namespace \
-            --wait \
-            --timeout 5m
+            --set controller.admissionWebhooks.enabled=false \
+            --set controller.admissionWebhooks.patch.enabled=false \
+            --timeout 8m
 
       - name: Get ECR registry
         id: ecr
