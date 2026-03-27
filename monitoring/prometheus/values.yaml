@@ -9,13 +9,11 @@ server:
     limits:
       cpu: 500m
       memory: 512Mi
+  service:
+    type: NodePort
+    nodePort: 30090
   ingress:
-    enabled: true
-    ingressClassName: nginx
-    hosts:
-      - ""
-    path: /prometheus
-    pathType: Prefix
+    enabled: false
 
 alertmanager:
   enabled: false

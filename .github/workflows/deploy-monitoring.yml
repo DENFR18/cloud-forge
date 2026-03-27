@@ -74,14 +74,11 @@ jobs:
             --query "Parameter.Value" \
             --output text \
             --region ${{ env.AWS_REGION }})
-          NODE_PORT=$(kubectl get svc ingress-nginx-controller \
-            -n ingress-nginx \
-            -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || echo "pending")
           echo "================================================"
           echo "  MONITORING DEPLOYE"
           echo "================================================"
-          echo "  Grafana    : http://$MASTER_IP:$NODE_PORT/grafana"
-          echo "  Prometheus : http://$MASTER_IP:$NODE_PORT/prometheus"
+          echo "  Grafana    : http://$MASTER_IP:30030"
+          echo "  Prometheus : http://$MASTER_IP:30090"
           echo ""
           echo "  Grafana login    : admin"
           echo "  Grafana password : $PASSWORD"

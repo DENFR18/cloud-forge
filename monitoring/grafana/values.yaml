@@ -12,13 +12,12 @@ resources:
     cpu: 300m
     memory: 256Mi
 
+service:
+  type: NodePort
+  nodePort: 30030
+
 ingress:
-  enabled: true
-  ingressClassName: nginx
-  hosts:
-    - ""
-  path: /grafana
-  pathType: Prefix
+  enabled: false
 
 datasources:
   datasources.yaml:
