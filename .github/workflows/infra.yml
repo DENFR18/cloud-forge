@@ -12,8 +12,11 @@ on:
           - destroy
 
 env:
-  AWS_REGION: eu-west-3
   TF_VERSION: 1.7.0
+  SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+  SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_DEFAULT_PROJECT_ID }}
+  SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
 
 jobs:
   # ─── DEPLOY ────────────────────────────────────────────────────────────────
@@ -29,13 +32,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -50,70 +46,48 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-        env:
-          TF_VAR_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-        env:
-          TF_VAR_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
 
-      - name: Wait for k3s master to be ready
+      - name: Export kubeconfig
         run: |
-          echo "Waiting for k3s master to write kubeconfig to SSM..."
-          MAX_RETRY=40
+          mkdir -p ~/.kube
+          terraform output -raw kubeconfig > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Wait for nodes to be ready
+        run: |
+          echo "Waiting for nodes..."
+          MAX_RETRY=30
           RETRY=0
-          KUBECONFIG_VALUE=""
-
-          while [ -z "$KUBECONFIG_VALUE" ] && [ $RETRY -lt $MAX_RETRY ]; do
-            KUBECONFIG_VALUE=$(aws ssm get-parameter \
-              --name "/cloud-forge/k3s-kubeconfig" \
-              --with-decryption \
-              --query "Parameter.Value" \
-              --output text \
-              --region ${{ env.AWS_REGION }} 2>/dev/null || echo "")
-
-            if [ -z "$KUBECONFIG_VALUE" ]; then
-              echo "Still waiting... ($RETRY/$MAX_RETRY)"
-              sleep 30
-              RETRY=$((RETRY + 1))
+          while [ $RETRY -lt $MAX_RETRY ]; do
+            READY=$(kubectl get nodes --no-headers 2>/dev/null | grep -c " Ready" || echo "0")
+            if [ "$READY" -ge 2 ]; then
+              echo "All nodes ready!"
+              kubectl get nodes
+              break
             fi
+            echo "Nodes ready: $READY/2 ($RETRY/$MAX_RETRY)"
+            sleep 20
+            RETRY=$((RETRY + 1))
           done
-
-          if [ -z "$KUBECONFIG_VALUE" ]; then
-            echo "ERROR: k3s master did not become ready in time"
+          if [ "$READY" -lt 2 ]; then
+            echo "ERROR: Nodes not ready in time"
             exit 1
           fi
 
-          echo "k3s master is ready!"
-
-      - name: Verify cluster
-        run: |
-          mkdir -p ~/.kube
-          aws ssm get-parameter \
-            --name "/cloud-forge/k3s-kubeconfig" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text \
-            --region ${{ env.AWS_REGION }} > ~/.kube/config
-          chmod 600 ~/.kube/config
-
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-
-          kubectl get nodes
-
       - name: Summary
         run: |
-          MASTER_IP=$(terraform output -raw master_public_ip)
           echo "================================================"
           echo "  INFRASTRUCTURE DEPLOYEE AVEC SUCCES"
           echo "================================================"
-          echo "Master k3s    : $MASTER_IP"
-          echo "k3s API       : https://$MASTER_IP:6443"
-          echo "ECR node-api  : $(terraform output -raw ecr_node_api_url)"
-          echo "ECR flask-api : $(terraform output -raw ecr_flask_api_url)"
-          echo "ECR react     : $(terraform output -raw ecr_react_url)"
+          echo "Cluster ID : $(terraform output -raw cluster_id)"
+          echo "API Server : $(terraform output -raw cluster_apiserver_url)"
+          echo "Registry   : $(terraform output -raw registry_endpoint)"
           echo ""
           echo "Lance maintenant le workflow 'Deploy Apps'."
 
@@ -131,13 +105,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -147,25 +114,13 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Cleanup SSM Parameters
-        run: |
-          aws ssm delete-parameter --name "/cloud-forge/k3s-token" --region ${{ env.AWS_REGION }} 2>/dev/null || true
-          aws ssm delete-parameter --name "/cloud-forge/k3s-master-ip" --region ${{ env.AWS_REGION }} 2>/dev/null || true
-          aws ssm delete-parameter --name "/cloud-forge/k3s-kubeconfig" --region ${{ env.AWS_REGION }} 2>/dev/null || true
-        continue-on-error: true
-
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
-        env:
-          TF_VAR_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
 
       - name: Confirmation
         run: |
           echo "================================================"
           echo "  INFRASTRUCTURE DETRUITE TOTALEMENT"
           echo "================================================"
-          echo "VPC, EC2 (master + workers), EIP, ECR, SG..."
-          echo "Parametres SSM nettoyes."
-          echo ""
-          echo "Note : Le bucket S3 tfstate et la table DynamoDB"
-          echo "sont conserves pour le prochain deploiement."
+          echo "Cluster Kapsule, Pool, Private Network, Registry..."
+          echo "supprimees."

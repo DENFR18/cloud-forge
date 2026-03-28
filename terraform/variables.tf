@@ -1,7 +1,7 @@
-variable "aws_region" {
-  description = "AWS region"
+variable "scw_region" {
+  description = "Scaleway region"
   type        = string
-  default     = "eu-west-3"
+  default     = "fr-par"
 }
 
 variable "project" {
@@ -14,9 +14,4 @@ variable "environment" {
   description = "Environment"
   type        = string
   default     = "prod"
-}
-
-variable "public_key" {
-  description = "SSH public key for EC2 instances"
-  type        = string
 }

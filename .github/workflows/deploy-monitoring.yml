@@ -4,7 +4,11 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: eu-west-3
+  SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+  SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_DEFAULT_PROJECT_ID }}
+  SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
+  TF_VERSION: 1.7.0
 
 jobs:
   monitoring:
@@ -15,12 +19,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
@@ -28,15 +31,12 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      - name: Setup kubeconfig from SSM
+      - name: Setup kubeconfig
+        working-directory: terraform
         run: |
+          terraform init
           mkdir -p ~/.kube
-          aws ssm get-parameter \
-            --name "/cloud-forge/k3s-kubeconfig" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text \
-            --region ${{ env.AWS_REGION }} > ~/.kube/config
+          terraform output -raw kubeconfig > ~/.kube/config
           chmod 600 ~/.kube/config
 
       - name: Add Helm repositories
@@ -67,16 +67,14 @@ jobs:
           PASSWORD=$(kubectl get secret grafana \
             -n monitoring \
             -o jsonpath="{.data.admin-password}" | base64 --decode)
-          MASTER_IP=$(aws ssm get-parameter \
-            --name "/cloud-forge/k3s-master-ip" \
-            --query "Parameter.Value" \
-            --output text \
-            --region ${{ env.AWS_REGION }})
+          LB_IP=$(kubectl get svc ingress-nginx-controller \
+            -n ingress-nginx \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
           echo "================================================"
           echo "  MONITORING DEPLOYE"
           echo "================================================"
-          echo "  Grafana    : http://$MASTER_IP:30030"
-          echo "  Prometheus : http://$MASTER_IP:30090"
+          echo "  Grafana    : http://$LB_IP:30030"
+          echo "  Prometheus : http://$LB_IP:30090"
           echo ""
           echo "  Grafana login    : admin"
           echo "  Grafana password : $PASSWORD"
