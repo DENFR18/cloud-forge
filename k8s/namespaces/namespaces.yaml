@@ -13,10 +13,10 @@ metadata:
   namespace: stack-wordpress
 spec:
   hard:
-    requests.cpu: "500m"
-    requests.memory: "512Mi"
-    limits.cpu: "1"
-    limits.memory: "1Gi"
+    requests.cpu: "1"
+    requests.memory: "1Gi"
+    limits.cpu: "2"
+    limits.memory: "2Gi"
 ---
 apiVersion: v1
 kind: Namespace
@@ -32,10 +32,10 @@ metadata:
   namespace: stack-ghost
 spec:
   hard:
-    requests.cpu: "250m"
-    requests.memory: "256Mi"
-    limits.cpu: "500m"
-    limits.memory: "512Mi"
+    requests.cpu: "500m"
+    requests.memory: "512Mi"
+    limits.cpu: "1"
+    limits.memory: "1Gi"
 ---
 apiVersion: v1
 kind: Namespace
@@ -51,10 +51,10 @@ metadata:
   namespace: stack-gitea
 spec:
   hard:
-    requests.cpu: "250m"
-    requests.memory: "256Mi"
-    limits.cpu: "500m"
-    limits.memory: "512Mi"
+    requests.cpu: "500m"
+    requests.memory: "512Mi"
+    limits.cpu: "1"
+    limits.memory: "1Gi"
 ---
 apiVersion: v1
 kind: Namespace
@@ -70,10 +70,10 @@ metadata:
   namespace: stack-node-api
 spec:
   hard:
-    requests.cpu: "100m"
-    requests.memory: "128Mi"
-    limits.cpu: "250m"
-    limits.memory: "256Mi"
+    requests.cpu: "200m"
+    requests.memory: "256Mi"
+    limits.cpu: "500m"
+    limits.memory: "512Mi"
 ---
 apiVersion: v1
 kind: Namespace
@@ -89,10 +89,10 @@ metadata:
   namespace: stack-flask-api
 spec:
   hard:
-    requests.cpu: "100m"
-    requests.memory: "128Mi"
-    limits.cpu: "250m"
-    limits.memory: "256Mi"
+    requests.cpu: "200m"
+    requests.memory: "256Mi"
+    limits.cpu: "500m"
+    limits.memory: "512Mi"
 ---
 apiVersion: v1
 kind: Namespace
@@ -108,10 +108,10 @@ metadata:
   namespace: stack-react
 spec:
   hard:
-    requests.cpu: "100m"
-    requests.memory: "128Mi"
-    limits.cpu: "250m"
-    limits.memory: "256Mi"
+    requests.cpu: "200m"
+    requests.memory: "256Mi"
+    limits.cpu: "500m"
+    limits.memory: "512Mi"
 ---
 apiVersion: v1
 kind: Namespace
