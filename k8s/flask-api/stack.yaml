@@ -19,6 +19,7 @@ spec:
       containers:
         - name: flask-api
           image: ECR_REGISTRY/flask-api:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           resources:

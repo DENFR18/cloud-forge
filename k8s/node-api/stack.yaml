@@ -19,6 +19,7 @@ spec:
       containers:
         - name: node-api
           image: ECR_REGISTRY/node-api:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           resources:

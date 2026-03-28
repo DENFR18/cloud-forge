@@ -140,6 +140,15 @@ jobs:
           kubectl apply -f k8s/flask-api/
           kubectl apply -f k8s/react/
 
+      - name: Restart custom image deployments
+        run: |
+          kubectl rollout restart deployment/react -n stack-react
+          kubectl rollout restart deployment/node-api -n stack-node-api
+          kubectl rollout restart deployment/flask-api -n stack-flask-api
+          kubectl rollout status deployment/react -n stack-react --timeout=120s
+          kubectl rollout status deployment/node-api -n stack-node-api --timeout=120s
+          kubectl rollout status deployment/flask-api -n stack-flask-api --timeout=120s
+
       - name: Summary
         run: |
           LB_IP=$(kubectl get svc ingress-nginx-controller \
@@ -150,9 +159,9 @@ jobs:
           echo "================================================"
           echo "Load Balancer IP : $LB_IP"
           echo ""
-          echo "  WordPress  : http://$LB_IP"
-          echo "  Ghost      : http://$LB_IP"
-          echo "  Gitea      : http://$LB_IP"
+          echo "  Portail    : http://$LB_IP"
+          echo "  WordPress  : http://$LB_IP/wordpress"
+          echo "  Ghost      : http://$LB_IP/ghost"
+          echo "  Gitea      : http://$LB_IP/gitea"
           echo "  Node API   : http://$LB_IP/api"
           echo "  Flask API  : http://$LB_IP/flask"
-          echo "  React      : http://$LB_IP"
