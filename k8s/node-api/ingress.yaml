@@ -16,4 +16,4 @@ spec:
               service:
                 name: node-api
                 port:
-                  number: 3000
+                  number: 80
