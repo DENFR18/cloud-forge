@@ -14,9 +14,11 @@ spec:
       labels:
         app: flask-api
     spec:
+      imagePullSecrets:
+        - name: scr-credentials
       containers:
         - name: flask-api
-          image: ECR_REGISTRY/cloud-forge/flask-api:latest
+          image: ECR_REGISTRY/flask-api:latest
           ports:
             - containerPort: 5000
           resources:
