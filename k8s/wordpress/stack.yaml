@@ -109,6 +109,11 @@ spec:
               value: wordpress
             - name: WORDPRESS_DB_PASSWORD
               value: wordpress2024
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('FORCE_SSL_ADMIN', false);
+                define('WP_HOME', '/wordpress');
+                define('WP_SITEURL', '/wordpress');
           ports:
             - containerPort: 80
           volumeMounts:
