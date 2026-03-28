@@ -8,7 +8,7 @@ terraform {
 
 resource "scaleway_k8s_cluster" "this" {
   name    = "${var.project}-${var.environment}"
-  version = "1.31"
+  version = "1.30.2"
   cni     = "cilium"
   tags    = var.tags
 
