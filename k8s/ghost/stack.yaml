@@ -30,7 +30,7 @@ spec:
           image: ghost:5-alpine
           env:
             - name: url
-              value: "http://ghost.cloud-forge.local"
+              value: "http://ghost.INGRESS_HOST"
             - name: database__client
               value: "sqlite3"
             - name: database__connection__filename

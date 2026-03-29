@@ -3,14 +3,13 @@ kind: Ingress
 metadata:
   name: gitea-ingress
   namespace: stack-gitea
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
-    - http:
+    - host: gitea.INGRESS_HOST
+      http:
         paths:
-          - path: /gitea
+          - path: /
             pathType: Prefix
             backend:
               service:

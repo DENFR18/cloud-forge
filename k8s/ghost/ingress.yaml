@@ -3,14 +3,13 @@ kind: Ingress
 metadata:
   name: ghost-ingress
   namespace: stack-ghost
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
-    - http:
+    - host: ghost.INGRESS_HOST
+      http:
         paths:
-          - path: /ghost
+          - path: /
             pathType: Prefix
             backend:
               service:

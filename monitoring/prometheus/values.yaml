@@ -11,17 +11,8 @@ server:
       memory: 512Mi
   service:
     type: ClusterIP
-  prefixURL: "/prometheus"
-  baseURL: "/prometheus/"
   ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      nginx.ingress.kubernetes.io/rewrite-target: /$1
-    hosts:
-      - ""
-    path: /prometheus/?(.*)
-    pathType: ImplementationSpecific
+    enabled: false
 
 alertmanager:
   enabled: false

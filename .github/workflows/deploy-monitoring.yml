@@ -64,6 +64,15 @@ jobs:
             --values monitoring/grafana/values.yaml \
             --timeout 5m
 
+      - name: Deploy monitoring ingress
+        run: |
+          LB_IP=$(kubectl get svc ingress-nginx-controller \
+            -n ingress-nginx \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          INGRESS_HOST="${LB_IP}.nip.io"
+          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" monitoring/ingress.yaml
+          kubectl apply -f monitoring/ingress.yaml
+
       - name: Get Grafana credentials
         run: |
           PASSWORD=$(kubectl get secret grafana \
@@ -71,12 +80,13 @@ jobs:
             -o jsonpath="{.data.admin-password}" | base64 --decode)
           LB_IP=$(kubectl get svc ingress-nginx-controller \
             -n ingress-nginx \
-            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          INGRESS_HOST="${LB_IP}.nip.io"
           echo "================================================"
           echo "  MONITORING DEPLOYE"
           echo "================================================"
-          echo "  Grafana    : http://$LB_IP/grafana"
-          echo "  Prometheus : http://$LB_IP/prometheus"
+          echo "  Grafana    : http://grafana.$INGRESS_HOST"
+          echo "  Prometheus : http://prometheus.$INGRESS_HOST"
           echo ""
           echo "  Grafana login    : admin"
           echo "  Grafana password : $PASSWORD"

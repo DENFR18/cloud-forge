@@ -113,13 +113,35 @@ jobs:
               --dry-run=client -o yaml | kubectl apply -f -
           done
 
+      - name: Get Load Balancer IP
+        id: lb
+        run: |
+          echo "Waiting for Load Balancer IP..."
+          for i in $(seq 1 30); do
+            LB_IP=$(kubectl get svc ingress-nginx-controller \
+              -n ingress-nginx \
+              -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+            if [ -n "$LB_IP" ]; then
+              echo "ip=$LB_IP" >> $GITHUB_OUTPUT
+              echo "host=${LB_IP}.nip.io" >> $GITHUB_OUTPUT
+              echo "Load Balancer IP: $LB_IP"
+              break
+            fi
+            sleep 10
+          done
+
       - name: Deploy apps
         env:
           SCR_REGISTRY: ${{ needs.build-push.outputs.registry }}
+          INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
           sed -i "s|ECR_REGISTRY|$SCR_REGISTRY|g" k8s/node-api/stack.yaml
           sed -i "s|ECR_REGISTRY|$SCR_REGISTRY|g" k8s/flask-api/stack.yaml
           sed -i "s|ECR_REGISTRY|$SCR_REGISTRY|g" k8s/react/stack.yaml
+          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/wordpress/ingress.yaml
+          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/ghost/ingress.yaml
+          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/ghost/stack.yaml
+          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/gitea/ingress.yaml
 
           kubectl apply -f k8s/wordpress/
           kubectl apply -f k8s/ghost/
@@ -133,23 +155,24 @@ jobs:
           kubectl rollout restart deployment/react -n stack-react
           kubectl rollout restart deployment/node-api -n stack-node-api
           kubectl rollout restart deployment/flask-api -n stack-flask-api
-          kubectl rollout status deployment/react -n stack-react --timeout=120s
-          kubectl rollout status deployment/node-api -n stack-node-api --timeout=120s
-          kubectl rollout status deployment/flask-api -n stack-flask-api --timeout=120s
+          kubectl rollout status deployment/react -n stack-react --timeout=180s
+          kubectl rollout status deployment/node-api -n stack-node-api --timeout=180s
+          kubectl rollout status deployment/flask-api -n stack-flask-api --timeout=180s
 
       - name: Summary
+        env:
+          LB_IP: ${{ steps.lb.outputs.ip }}
+          INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
-          LB_IP=$(kubectl get svc ingress-nginx-controller \
-            -n ingress-nginx \
-            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
           echo "================================================"
           echo "  APPLICATIONS DEPLOYEES"
           echo "================================================"
           echo "Load Balancer IP : $LB_IP"
+          echo "Wildcard DNS     : *.$INGRESS_HOST"
           echo ""
           echo "  Portail    : http://$LB_IP"
-          echo "  WordPress  : http://$LB_IP/wordpress"
-          echo "  Ghost      : http://$LB_IP/ghost"
-          echo "  Gitea      : http://$LB_IP/gitea"
+          echo "  WordPress  : http://wordpress.$INGRESS_HOST"
+          echo "  Ghost      : http://ghost.$INGRESS_HOST"
+          echo "  Gitea      : http://gitea.$INGRESS_HOST"
           echo "  Node API   : http://$LB_IP/api"
           echo "  Flask API  : http://$LB_IP/flask"

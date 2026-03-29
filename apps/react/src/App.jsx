@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 
-const apps = [
-  { name: 'WordPress', path: '/wordpress', desc: 'CMS client Alpha', color: '#3b82f6', icon: '📝' },
-  { name: 'Ghost', path: '/ghost', desc: 'Blog client Beta', color: '#8b5cf6', icon: '👻' },
-  { name: 'Gitea', path: '/gitea', desc: 'Git self-hosted client Gamma', color: '#f97316', icon: '🔧' },
-  { name: 'Grafana', path: '/grafana', desc: 'Dashboards monitoring', color: '#f59e0b', icon: '📊' },
-  { name: 'Prometheus', path: '/prometheus', desc: 'Metriques cluster', color: '#ef4444', icon: '🔥' },
+const subdomainApps = [
+  { name: 'WordPress', sub: 'wordpress', desc: 'CMS client Alpha', color: '#3b82f6', icon: '📝' },
+  { name: 'Ghost', sub: 'ghost', desc: 'Blog client Beta', color: '#8b5cf6', icon: '👻' },
+  { name: 'Gitea', sub: 'gitea', desc: 'Git self-hosted client Gamma', color: '#f97316', icon: '🔧' },
+  { name: 'Grafana', sub: 'grafana', desc: 'Dashboards monitoring', color: '#f59e0b', icon: '📊' },
+  { name: 'Prometheus', sub: 'prometheus', desc: 'Metriques cluster', color: '#ef4444', icon: '🔥' },
 ]
 
 const stack = [
@@ -31,7 +31,7 @@ export default function App() {
       .catch(() => setFlaskData({ status: 'unreachable' }))
   }, [])
 
-  const getAppUrl = (app) => app.path
+  const getAppUrl = (app) => `http://${app.sub}.${host}`
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: '#0f172a', color: '#e2e8f0', minHeight: '100vh', padding: '2rem' }}>
@@ -53,8 +53,8 @@ export default function App() {
           Applications clients
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          {apps.map(app => (
-            <a key={app.name} href={getAppUrl(app)}
+          {subdomainApps.map(app => (
+            <a key={app.name} href={getAppUrl(app)} target="_blank" rel="noopener noreferrer"
               style={{
                 background: '#1e293b', padding: '1.2rem', borderRadius: 12,
                 borderLeft: `4px solid ${app.color}`, textDecoration: 'none', color: '#e2e8f0',
