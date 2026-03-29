@@ -31,7 +31,8 @@ export default function App() {
       .catch(() => setFlaskData({ status: 'unreachable' }))
   }, [])
 
-  const getAppUrl = (app) => `http://${app.sub}.${host}`
+  const baseHost = host.endsWith('.nip.io') ? host : `${host}.nip.io`
+  const getAppUrl = (app) => `http://${app.sub}.${baseHost}`
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: '#0f172a', color: '#e2e8f0', minHeight: '100vh', padding: '2rem' }}>
