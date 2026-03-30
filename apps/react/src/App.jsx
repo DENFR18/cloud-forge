@@ -82,7 +82,6 @@ export default function App() {
           <span className="logo-forge">Forge</span>
         </h1>
         <p className="subtitle">Plateforme multi-tenant ESN — Infrastructure as Code</p>
-        <p className="school">SUP DE VINCI — Mastere DevOps 2025-2026</p>
       </header>
 
       <main className="main">
