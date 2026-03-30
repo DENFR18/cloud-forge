@@ -26,9 +26,11 @@ cloud-forge/
 │   ├── node-api/            # API Express.js (Node 20)
 │   ├── flask-api/           # API Flask + Gunicorn (Python 3.12)
 │   └── react/               # Frontend React + Vite (servi via Nginx)
-└── monitoring/
-    ├── prometheus/           # Helm values Prometheus
-    └── grafana/              # Helm values Grafana + dashboards
+├── monitoring/
+│   ├── prometheus/          # Helm values Prometheus
+│   └── grafana/             # Helm values Grafana + dashboards
+└── scripts/
+    └── validate_yaml.py     # Validation syntaxique des YAML Kubernetes
 ```
 
 ---
@@ -46,6 +48,7 @@ cloud-forge/
 | Monitoring | Prometheus + Grafana (Helm) |
 | DNS | nip.io (wildcard DNS) |
 | State Terraform | Scaleway Object Storage (S3-compatible) |
+| Validation | Python (PyYAML) — bloque le deploy si YAML invalide |
 
 ---
 
@@ -64,19 +67,33 @@ cloud-forge/
 
 ---
 
-## Demarrage
+## Pipeline CI/CD
 
-### 1. Prerequis
+```
+Deploy Apps :
+  validate-yaml → build-push → deploy
 
-- Compte Scaleway avec cles API generees
-- Compte GitHub avec acces au repo
-- Secrets GitHub configures :
-  - `SCW_ACCESS_KEY` — Cle d'acces Scaleway
-  - `SCW_SECRET_KEY` — Cle secrete Scaleway
-  - `SCW_DEFAULT_ORGANIZATION_ID` — ID organisation Scaleway
-  - `SCW_DEFAULT_PROJECT_ID` — ID projet Scaleway
+Deploy Monitoring :
+  setup kubeconfig → Prometheus → Grafana → ingress
+```
 
-### 2. Deploiement
+Le job `validate-yaml` parse tous les fichiers `k8s/**/*.yaml` via Python.
+Si un fichier est invalide, le pipeline s'arrete avant le build.
+
+---
+
+## Secrets GitHub requis
+
+| Secret | Description |
+|---|---|
+| `SCW_ACCESS_KEY` | Cle d'acces Scaleway |
+| `SCW_SECRET_KEY` | Cle secrete Scaleway |
+| `SCW_DEFAULT_ORGANIZATION_ID` | ID organisation Scaleway |
+| `SCW_DEFAULT_PROJECT_ID` | ID projet Scaleway |
+
+---
+
+## Déploiement
 
 Lancer les workflows dans cet ordre :
 
@@ -88,7 +105,7 @@ Lancer les workflows dans cet ordre :
 
 Le workflow Infrastructure cree automatiquement le bucket S3 pour le state Terraform.
 
-### 3. Destruction
+Pour détruire :
 
 ```
 Actions -> Infrastructure -> Run workflow -> destroy
@@ -96,52 +113,27 @@ Actions -> Infrastructure -> Run workflow -> destroy
 
 ---
 
-## Workflows GitHub Actions
-
-### `Infrastructure` — `infra.yml`
-
-Declenchement manuel avec choix de l'action :
-
-- **deploy** — Cree le cluster Kapsule, le node pool, le registry SCR et le reseau prive
-- **destroy** — Detruit toute l'infra Scaleway
-
-### `Deploy Apps` — `deploy-apps.yml`
-
-- Build les images Docker (node-api, flask-api, react)
-- Push sur Scaleway Container Registry
-- Deploie toutes les stacks sur Kapsule
-- Installe NGINX Ingress Controller via Helm
-- Configure le routage host-based avec nip.io
-- Affiche les URLs d'acces a la fin
-
-### `Deploy Monitoring` — `deploy-monitoring.yml`
-
-- Deploie Prometheus via Helm
-- Deploie Grafana via Helm avec dashboards preconfigures
-- Configure les ingress monitoring
-- Affiche les credentials Grafana a la fin
-
----
-
 ## Monitoring
 
-Dashboards Grafana preconfigures :
-- **Kubernetes Cluster** (ID 15661)
-- **Node Exporter Full** (ID 1860)
+5 dashboards Grafana pre-configures dans le dossier **Cloud Forge** :
 
-Credentials par defaut : `admin` / `CloudForge2024!`
+| Dashboard | ID | Contenu |
+|---|---|---|
+| Kubernetes Cluster | 15661 | Vue globale du cluster |
+| Node Exporter Full | 1860 | CPU, RAM, disk, network par node |
+| K8s Pods | 15760 | Ressources par pod |
+| K8s Namespaces | 15758 | Ressources par namespace |
+| NGINX Ingress | 14981 | Requetes, latence, erreurs par route |
+
+Credentials : `admin` / `CloudForge2024!`
 
 ---
 
 ## Couts estimes Scaleway
 
-| Ressource | Cout estime |
+| Ressource | Cout |
 |---|---|
 | 2x DEV1-M (4 GB RAM) | ~14 EUR/mois |
 | Container Registry | Gratuit (< 75 GB) |
 | Object Storage (tfstate) | < 1 EUR/mois |
 | **Total** | **~15 EUR/mois** |
-
----
-
-SUP DE VINCI — Mastere DevOps 2025-2026
