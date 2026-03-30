@@ -1,7 +1,7 @@
-# ⚡ Cloud Forge
+# Cloud Forge
 
-Plateforme DevOps multi-stack déployée sur **AWS EKS** via **Terraform** et **GitHub Actions**.
-Infrastructure 100% as Code avec monitoring Prometheus + Grafana intégré.
+Plateforme DevOps multi-tenant ESN deployee sur **Scaleway Kapsule** via **Terraform** et **GitHub Actions**.
+Infrastructure 100% as Code avec monitoring Prometheus + Grafana integre.
 
 ---
 
@@ -12,18 +12,23 @@ cloud-forge/
 ├── .github/workflows/       # GitHub Actions (infra, apps, monitoring)
 ├── terraform/
 │   └── modules/
-│       ├── vpc/             # VPC, subnets public/privé, NAT Gateway
-│       ├── eks/             # Cluster EKS + node group + IAM
-│       └── ecr/             # Repositories ECR (node-api, flask-api, react)
+│       ├── kapsule/         # Cluster Kapsule + node pool
+│       └── registry/        # Scaleway Container Registry (SCR)
 ├── k8s/                     # Manifestes Kubernetes par stack
+│   ├── namespaces/          # Namespaces + ResourceQuotas
+│   ├── wordpress/           # WordPress + MySQL
+│   ├── ghost/               # Ghost (SQLite)
+│   ├── gitea/               # Gitea
+│   ├── node-api/            # API Express.js
+│   ├── flask-api/           # API Flask
+│   └── react/               # Portail React
 ├── apps/
 │   ├── node-api/            # API Express.js (Node 20)
 │   ├── flask-api/           # API Flask + Gunicorn (Python 3.12)
 │   └── react/               # Frontend React + Vite (servi via Nginx)
-├── monitoring/
-│   ├── prometheus/          # Helm values Prometheus
-│   └── grafana/             # Helm values Grafana + dashboards
-└── portal/                  # Dashboard HTML de la plateforme
+└── monitoring/
+    ├── prometheus/           # Helm values Prometheus
+    └── grafana/              # Helm values Grafana + dashboards
 ```
 
 ---
@@ -32,68 +37,62 @@ cloud-forge/
 
 | Composant | Technologie |
 |---|---|
-| Cloud | AWS (eu-west-3) |
-| Kubernetes | Amazon EKS 1.31 |
-| IaC | Terraform 1.7 |
+| Cloud | Scaleway (fr-par) |
+| Kubernetes | Scaleway Kapsule 1.34 (Cilium CNI) |
+| IaC | Terraform + provider scaleway/scaleway |
 | CI/CD | GitHub Actions |
-| Registry | Amazon ECR |
+| Registry | Scaleway Container Registry (SCR) |
 | Ingress | NGINX Ingress Controller |
 | Monitoring | Prometheus + Grafana (Helm) |
-| State Terraform | S3 + DynamoDB |
+| DNS | nip.io (wildcard DNS) |
+| State Terraform | Scaleway Object Storage (S3-compatible) |
 
 ---
 
-## Stacks déployées
+## Stacks deployees
 
-| Stack | Namespace | Image |
-|---|---|---|
-| WordPress + MySQL | `stack-wordpress` | Docker Hub |
-| Ghost | `stack-ghost` | Docker Hub |
-| Gitea | `stack-gitea` | Docker Hub |
-| Node API | `stack-node-api` | ECR |
-| Flask API | `stack-flask-api` | ECR |
-| React App | `stack-react` | ECR |
+| Stack | Namespace | Image | Acces |
+|---|---|---|---|
+| WordPress + MySQL | `stack-wordpress` | Docker Hub | `wordpress.<IP>.nip.io` |
+| Ghost (SQLite) | `stack-ghost` | Docker Hub | `ghost.<IP>.nip.io` |
+| Gitea | `stack-gitea` | Docker Hub | `gitea.<IP>.nip.io` |
+| Node API | `stack-node-api` | SCR | `<IP>.nip.io/api` |
+| Flask API | `stack-flask-api` | SCR | `<IP>.nip.io/flask` |
+| Portail React | `stack-react` | SCR | `<IP>.nip.io` |
+| Grafana | `monitoring` | Helm | `grafana.<IP>.nip.io` |
+| Prometheus | `monitoring` | Helm | `prometheus.<IP>.nip.io` |
 
 ---
 
-## Démarrage
+## Demarrage
 
-### 1. Prérequis
+### 1. Prerequis
 
-- AWS CLI configuré (`aws configure`)
-- Compte GitHub avec accès au repo
-- Secrets GitHub configurés :
-  - `AWS_ACCESS_KEY_ID`
-  - `AWS_SECRET_ACCESS_KEY`
-- Environment GitHub `production` créé avec reviewer obligatoire
+- Compte Scaleway avec cles API generees
+- Compte GitHub avec acces au repo
+- Secrets GitHub configures :
+  - `SCW_ACCESS_KEY` — Cle d'acces Scaleway
+  - `SCW_SECRET_KEY` — Cle secrete Scaleway
+  - `SCW_DEFAULT_ORGANIZATION_ID` — ID organisation Scaleway
+  - `SCW_DEFAULT_PROJECT_ID` — ID projet Scaleway
 
-### 2. Bootstrap (une seule fois)
-
-Crée le bucket S3 et la table DynamoDB pour le state Terraform :
-
-```powershell
-aws s3api create-bucket --bucket cloud-forge-tfstate --region eu-west-3 --create-bucket-configuration LocationConstraint=eu-west-3
-
-aws dynamodb create-table --table-name cloud-forge-tflock --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --billing-mode PAY_PER_REQUEST --region eu-west-3
-```
-
-### 3. Déploiement
+### 2. Deploiement
 
 Lancer les workflows dans cet ordre :
 
 ```
-1. Actions → Infrastructure      → Run workflow → deploy
-2. Actions → Deploy Apps         → Run workflow
-3. Actions → Deploy Monitoring   → Run workflow
+1. Actions -> Infrastructure      -> Run workflow -> deploy
+2. Actions -> Deploy Apps         -> Run workflow
+3. Actions -> Deploy Monitoring   -> Run workflow
 ```
 
-### 4. Destruction
+Le workflow Infrastructure cree automatiquement le bucket S3 pour le state Terraform.
+
+### 3. Destruction
 
 ```
-Actions → Infrastructure → Run workflow → destroy
+Actions -> Infrastructure -> Run workflow -> destroy
 ```
-
-Une confirmation manuelle est requise via GitHub Environments avant la destruction.
 
 ---
 
@@ -101,44 +100,48 @@ Une confirmation manuelle est requise via GitHub Environments avant la destructi
 
 ### `Infrastructure` — `infra.yml`
 
-Déclenchement manuel avec choix de l'action :
+Declenchement manuel avec choix de l'action :
 
-- **deploy** — Crée toute l'infra AWS (VPC, EKS, ECR, NAT Gateway)
-- **destroy** — Détruit toute l'infra AWS. Nécessite une approbation manuelle via l'environment `production`
+- **deploy** — Cree le cluster Kapsule, le node pool, le registry SCR et le reseau prive
+- **destroy** — Detruit toute l'infra Scaleway
 
 ### `Deploy Apps` — `deploy-apps.yml`
 
 - Build les images Docker (node-api, flask-api, react)
-- Push sur ECR
-- Déploie toutes les stacks sur EKS
+- Push sur Scaleway Container Registry
+- Deploie toutes les stacks sur Kapsule
 - Installe NGINX Ingress Controller via Helm
-- Affiche les URLs d'accès à la fin
+- Configure le routage host-based avec nip.io
+- Affiche les URLs d'acces a la fin
 
 ### `Deploy Monitoring` — `deploy-monitoring.yml`
 
-- Déploie Prometheus via Helm
-- Déploie Grafana via Helm avec dashboards préconfigurés
-- Affiche les credentials Grafana à la fin
+- Deploie Prometheus via Helm
+- Deploie Grafana via Helm avec dashboards preconfigures
+- Configure les ingress monitoring
+- Affiche les credentials Grafana a la fin
 
 ---
 
 ## Monitoring
 
-Dashboards Grafana préconfigurés :
+Dashboards Grafana preconfigures :
 - **Kubernetes Cluster** (ID 15661)
 - **Node Exporter Full** (ID 1860)
 
-Credentials par défaut : `admin` / `CloudForge2024!`
+Credentials par defaut : `admin` / `CloudForge2024!`
 
 ---
 
-## Coûts estimés AWS
+## Couts estimes Scaleway
 
-| Ressource | Coût estimé |
+| Ressource | Cout estime |
 |---|---|
-| EKS Control Plane | ~$0.10/h |
-| 2× t3.medium | ~$0.10/h |
-| NAT Gateway | ~$0.05/h + data |
-| **Total** | **~$6/jour** |
+| 2x DEV1-M (4 GB RAM) | ~14 EUR/mois |
+| Container Registry | Gratuit (< 75 GB) |
+| Object Storage (tfstate) | < 1 EUR/mois |
+| **Total** | **~15 EUR/mois** |
 
-> Penser à détruire l'infra quand elle n'est pas utilisée.
+---
+
+SUP DE VINCI — Mastere DevOps 2025-2026

@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
+import './index.css'
 
-const subdomainApps = [
-  { name: 'WordPress', sub: 'wordpress', desc: 'CMS client Alpha', color: '#3b82f6', icon: '📝' },
-  { name: 'Ghost', sub: 'ghost', desc: 'Blog client Beta', color: '#8b5cf6', icon: '👻' },
-  { name: 'Gitea', sub: 'gitea', desc: 'Git self-hosted client Gamma', color: '#f97316', icon: '🔧' },
-  { name: 'Grafana', sub: 'grafana', desc: 'Dashboards monitoring', color: '#f59e0b', icon: '📊' },
-  { name: 'Prometheus', sub: 'prometheus', desc: 'Metriques cluster', color: '#ef4444', icon: '🔥' },
+const clientApps = [
+  { name: 'WordPress', sub: 'wordpress', desc: 'CMS — Client Alpha', tag: 'CMS', accent: '#3b82f6', iconBg: 'rgba(59,130,246,0.12)', icon: 'W' },
+  { name: 'Ghost', sub: 'ghost', desc: 'Blog — Client Beta', tag: 'Blog', accent: '#8b5cf6', iconBg: 'rgba(139,92,246,0.12)', icon: 'G' },
+  { name: 'Gitea', sub: 'gitea', desc: 'Git — Client Gamma', tag: 'SCM', accent: '#f97316', iconBg: 'rgba(249,115,22,0.12)', icon: '<>' },
+]
+
+const monitoringApps = [
+  { name: 'Grafana', sub: 'grafana', desc: 'Dashboards & alerting', tag: 'Monitoring', accent: '#f59e0b', iconBg: 'rgba(245,158,11,0.12)', icon: '◈' },
+  { name: 'Prometheus', sub: 'prometheus', desc: 'Metriques cluster', tag: 'Metrics', accent: '#ef4444', iconBg: 'rgba(239,68,68,0.12)', icon: '◉' },
 ]
 
 const stack = [
-  'Scaleway Kapsule', 'Terraform', 'GitHub Actions', 'Prometheus',
-  'Grafana', 'NGINX Ingress', 'React', 'Node.js', 'Flask',
-  'WordPress', 'Ghost', 'Gitea', 'Docker', 'Cilium CNI'
+  'Scaleway Kapsule', 'Terraform', 'GitHub Actions', 'Docker',
+  'Prometheus', 'Grafana', 'NGINX Ingress', 'Cilium CNI',
+  'React', 'Node.js', 'Flask', 'WordPress', 'Ghost', 'Gitea',
 ]
 
 export default function App() {
@@ -34,98 +38,116 @@ export default function App() {
   const baseHost = host.endsWith('.nip.io') ? host : `${host}.nip.io`
   const getAppUrl = (app) => `http://${app.sub}.${baseHost}`
 
+  const AppCard = ({ app }) => (
+    <a
+      className="app-card"
+      href={getAppUrl(app)}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ '--card-accent': app.accent, '--icon-bg': app.iconBg }}
+    >
+      <div className="app-icon" style={{ color: app.accent }}>{app.icon}</div>
+      <div className="app-name">{app.name}</div>
+      <div className="app-desc">{app.desc}</div>
+      <span className="app-tag">{app.tag}</span>
+    </a>
+  )
+
+  const ApiCard = ({ name, lang, data, accent }) => {
+    const online = data && data.status !== 'unreachable'
+    return (
+      <div className="api-card">
+        <div className="api-header">
+          <div className="api-name">
+            {name}
+            <span className="api-lang">{lang}</span>
+          </div>
+          <span className={`status-badge ${online ? 'online' : 'offline'}`}>
+            <span className="status-dot" />
+            {online ? 'Online' : 'Offline'}
+          </span>
+        </div>
+        <div className="api-response">
+          {data ? JSON.stringify(data, null, 2) : 'Connecting...'}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div style={{ fontFamily: "'Segoe UI', sans-serif", background: '#0f172a', color: '#e2e8f0', minHeight: '100vh', padding: '2rem' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+    <div className="portal">
+      <header className="header">
+        <h1 className="logo">
+          <span className="logo-cloud">Cloud</span>{' '}
+          <span className="logo-forge">Forge</span>
+        </h1>
+        <p className="subtitle">Plateforme multi-tenant ESN — Infrastructure as Code</p>
+        <p className="school">SUP DE VINCI — Mastere DevOps 2025-2026</p>
+      </header>
 
-        <header style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#6366f1' }}>Cloud</span> <span style={{ color: '#10b981' }}>Forge</span>
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>
-            Plateforme multi-tenant ESN — Scaleway Kapsule
-          </p>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-            SUP DE VINCI — Mastere DevOps 2025-2026
-          </p>
-        </header>
-
-        <h2 style={{ color: '#94a3b8', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: 2, marginBottom: '1rem' }}>
-          Applications clients
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          {subdomainApps.map(app => (
-            <a key={app.name} href={getAppUrl(app)} target="_blank" rel="noopener noreferrer"
-              style={{
-                background: '#1e293b', padding: '1.2rem', borderRadius: 12,
-                borderLeft: `4px solid ${app.color}`, textDecoration: 'none', color: '#e2e8f0',
-                transition: 'transform 0.2s', cursor: 'pointer'
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{app.icon}</div>
-              <div style={{ fontWeight: 600 }}>{app.name}</div>
-              <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '0.3rem' }}>{app.desc}</div>
-            </a>
-          ))}
-        </div>
-
-        <h2 style={{ color: '#94a3b8', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: 2, marginBottom: '1rem' }}>
-          APIs internes
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-          <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: 12, borderTop: '3px solid #6366f1' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Node API</h3>
-              <span style={{
-                background: nodeData?.status === 'unreachable' ? '#ef4444' : '#10b981',
-                padding: '0.2rem 0.6rem', borderRadius: 20, fontSize: '0.75rem'
-              }}>
-                {nodeData?.status === 'unreachable' ? 'offline' : 'online'}
-              </span>
-            </div>
-            <pre style={{ color: '#94a3b8', fontSize: '0.8rem', overflow: 'auto', margin: 0 }}>
-              {nodeData ? JSON.stringify(nodeData, null, 2) : 'Chargement...'}
-            </pre>
+      <main className="main">
+        <section className="section">
+          <h2 className="section-title">Applications Clients</h2>
+          <div className="app-grid">
+            {clientApps.map(app => <AppCard key={app.name} app={app} />)}
           </div>
+        </section>
 
-          <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: 12, borderTop: '3px solid #10b981' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Flask API</h3>
-              <span style={{
-                background: flaskData?.status === 'unreachable' ? '#ef4444' : '#10b981',
-                padding: '0.2rem 0.6rem', borderRadius: 20, fontSize: '0.75rem'
-              }}>
-                {flaskData?.status === 'unreachable' ? 'offline' : 'online'}
-              </span>
-            </div>
-            <pre style={{ color: '#94a3b8', fontSize: '0.8rem', overflow: 'auto', margin: 0 }}>
-              {flaskData ? JSON.stringify(flaskData, null, 2) : 'Chargement...'}
-            </pre>
+        <section className="section">
+          <h2 className="section-title">Monitoring</h2>
+          <div className="app-grid">
+            {monitoringApps.map(app => <AppCard key={app.name} app={app} />)}
           </div>
-        </div>
+        </section>
 
-        <h2 style={{ color: '#94a3b8', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: 2, marginBottom: '1rem' }}>
-          Stack technique
-        </h2>
-        <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: 12 }}>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <section className="section">
+          <h2 className="section-title">APIs Internes</h2>
+          <div className="api-grid">
+            <ApiCard name="Node API" lang="Express.js" data={nodeData} accent="#818cf8" />
+            <ApiCard name="Flask API" lang="Python" data={flaskData} accent="#34d399" />
+          </div>
+        </section>
+
+        <section className="section">
+          <h2 className="section-title">Infrastructure</h2>
+          <div className="infra-bar">
+            <div className="infra-item">
+              <div className="infra-value">2</div>
+              <div className="infra-label">Nodes</div>
+            </div>
+            <div className="infra-item">
+              <div className="infra-value">7</div>
+              <div className="infra-label">Namespaces</div>
+            </div>
+            <div className="infra-item">
+              <div className="infra-value">11</div>
+              <div className="infra-label">Services</div>
+            </div>
+            <div className="infra-item">
+              <div className="infra-value">8 GB</div>
+              <div className="infra-label">RAM Total</div>
+            </div>
+            <div className="infra-item">
+              <div className="infra-value">K8s 1.34</div>
+              <div className="infra-label">Version</div>
+            </div>
+          </div>
+        </section>
+
+        <section className="section">
+          <h2 className="section-title">Stack Technique</h2>
+          <div className="stack-grid">
             {stack.map(tag => (
-              <span key={tag} style={{
-                background: '#334155', padding: '0.4rem 0.9rem',
-                borderRadius: 20, fontSize: '0.85rem', color: '#cbd5e1'
-              }}>
-                {tag}
-              </span>
+              <span key={tag} className="stack-tag">{tag}</span>
             ))}
           </div>
-        </div>
+        </section>
+      </main>
 
-        <footer style={{ textAlign: 'center', marginTop: '2rem', color: '#475569', fontSize: '0.8rem' }}>
-          Cloud Forge v2.0 — Deploye via GitHub Actions sur Scaleway Kapsule
-        </footer>
-      </div>
+      <footer className="footer">
+        Cloud Forge v2.0 — Deploye via GitHub Actions sur Scaleway Kapsule
+        <div className="footer-tech">Terraform &middot; Kubernetes &middot; CI/CD</div>
+      </footer>
     </div>
   )
 }
