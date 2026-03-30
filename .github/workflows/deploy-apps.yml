@@ -13,10 +13,30 @@ env:
   TF_VERSION: 1.7.0
 
 jobs:
+  # ─── VALIDATE YAML ─────────────────────────────────────────────────────────
+  validate-yaml:
+    name: Validate Kubernetes YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Run YAML validation
+        run: python scripts/validate_yaml.py
+
   # ─── BUILD & PUSH custom images ────────────────────────────────────────────
   build-push:
     name: Build & Push Images to SCR
     runs-on: ubuntu-latest
+    needs: validate-yaml
 
     outputs:
       registry: ${{ steps.get-registry.outputs.registry }}
