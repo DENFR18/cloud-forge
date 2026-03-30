@@ -145,7 +145,7 @@ export default function App() {
 
       <footer className="footer">
         Cloud Forge v2.0 — Deploye via GitHub Actions sur Scaleway Kapsule
-        <div className="footer-tech">Terraform &middot; Kubernetes &middot; CI/CD</div>
+        <div className="footer-tech">Denilsson Moreira Pereira</div>
       </footer>
     </div>
   )
