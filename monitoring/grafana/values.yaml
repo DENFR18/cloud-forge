@@ -39,11 +39,23 @@ dashboardProviders:
 
 dashboards:
   default:
-    kubernetes:
+    kubernetes-cluster:
       gnetId: 15661
       revision: 1
       datasource: Prometheus
     node-exporter:
       gnetId: 1860
       revision: 37
+      datasource: Prometheus
+    k8s-pods:
+      gnetId: 15760
+      revision: 1
+      datasource: Prometheus
+    nginx-ingress:
+      gnetId: 14981
+      revision: 1
+      datasource: Prometheus
+    k8s-namespaces:
+      gnetId: 15758
+      revision: 1
       datasource: Prometheus
