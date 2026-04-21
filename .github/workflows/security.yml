@@ -32,14 +32,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Checkov
+        run: pip install checkov --quiet
+
       - name: Scan Terraform
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: terraform/
-          framework: terraform
-          output_format: sarif
-          output_file_path: checkov-terraform.sarif
-          soft_fail: true
+        run: checkov -d terraform/ --framework terraform --output sarif --soft-fail > checkov-terraform.sarif || true
+
+      - name: Scan Kubernetes manifests
+        run: checkov -d k8s/ --framework kubernetes --output sarif --soft-fail > checkov-k8s.sarif || true
+
+      - name: Scan Dockerfiles
+        run: checkov -d apps/ --framework dockerfile --output sarif --soft-fail > checkov-dockerfiles.sarif || true
 
       - name: Upload Terraform SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -49,15 +52,6 @@ jobs:
           sarif_file: checkov-terraform.sarif
           category: checkov-terraform
 
-      - name: Scan Kubernetes manifests
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: k8s/
-          framework: kubernetes
-          output_format: sarif
-          output_file_path: checkov-k8s.sarif
-          soft_fail: true
-
       - name: Upload Kubernetes SARIF
         uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -65,15 +59,6 @@ jobs:
         with:
           sarif_file: checkov-k8s.sarif
           category: checkov-kubernetes
-
-      - name: Scan Dockerfiles
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: apps/
-          framework: dockerfile
-          output_format: sarif
-          output_file_path: checkov-dockerfiles.sarif
-          soft_fail: true
 
       - name: Upload Dockerfiles SARIF
         uses: github/codeql-action/upload-sarif@v3
