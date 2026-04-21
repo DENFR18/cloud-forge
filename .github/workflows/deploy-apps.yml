@@ -32,9 +32,9 @@ jobs:
       - name: Run YAML validation
         run: python scripts/validate_yaml.py
 
-  # ─── BUILD & PUSH custom images ────────────────────────────────────────────
+  # ─── BUILD, SCAN & PUSH custom images ─────────────────────────────────────
   build-push:
-    name: Build & Push Images to SCR
+    name: Build, Scan & Push Images to SCR
     runs-on: ubuntu-latest
     needs: validate-yaml
 
@@ -62,20 +62,78 @@ jobs:
       - name: Login to Scaleway Container Registry
         run: docker login ${{ steps.get-registry.outputs.registry }} -u nologin --password-stdin <<< "${{ secrets.SCW_SECRET_KEY }}"
 
-      - name: Build & push node-api
-        run: |
-          docker build -t ${{ steps.get-registry.outputs.registry }}/node-api:latest apps/node-api
-          docker push ${{ steps.get-registry.outputs.registry }}/node-api:latest
+      # ── node-api ──
+      - name: Build node-api
+        run: docker build -t ${{ steps.get-registry.outputs.registry }}/node-api:latest apps/node-api
 
-      - name: Build & push flask-api
-        run: |
-          docker build -t ${{ steps.get-registry.outputs.registry }}/flask-api:latest apps/flask-api
-          docker push ${{ steps.get-registry.outputs.registry }}/flask-api:latest
+      - name: Trivy scan – node-api
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ steps.get-registry.outputs.registry }}/node-api:latest
+          format: sarif
+          output: trivy-node-api.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
 
-      - name: Build & push react
-        run: |
-          docker build -t ${{ steps.get-registry.outputs.registry }}/react:latest apps/react
-          docker push ${{ steps.get-registry.outputs.registry }}/react:latest
+      - name: Push node-api
+        run: docker push ${{ steps.get-registry.outputs.registry }}/node-api:latest
+
+      # ── flask-api ──
+      - name: Build flask-api
+        run: docker build -t ${{ steps.get-registry.outputs.registry }}/flask-api:latest apps/flask-api
+
+      - name: Trivy scan – flask-api
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ steps.get-registry.outputs.registry }}/flask-api:latest
+          format: sarif
+          output: trivy-flask-api.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Push flask-api
+        run: docker push ${{ steps.get-registry.outputs.registry }}/flask-api:latest
+
+      # ── react ──
+      - name: Build react
+        run: docker build -t ${{ steps.get-registry.outputs.registry }}/react:latest apps/react
+
+      - name: Trivy scan – react
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ${{ steps.get-registry.outputs.registry }}/react:latest
+          format: sarif
+          output: trivy-react.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Push react
+        run: docker push ${{ steps.get-registry.outputs.registry }}/react:latest
+
+      # ── Upload SARIF reports ──
+      - name: Upload Trivy SARIF – node-api
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-node-api.sarif
+          category: trivy-node-api
+
+      - name: Upload Trivy SARIF – flask-api
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-flask-api.sarif
+          category: trivy-flask-api
+
+      - name: Upload Trivy SARIF – react
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-react.sarif
+          category: trivy-react
 
   # ─── DEPLOY to Kapsule ────────────────────────────────────────────────────
   deploy:
