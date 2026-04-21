@@ -117,6 +117,7 @@ jobs:
       - name: Upload Trivy SARIF – node-api
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: trivy-node-api.sarif
           category: trivy-node-api
@@ -124,6 +125,7 @@ jobs:
       - name: Upload Trivy SARIF – flask-api
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: trivy-flask-api.sarif
           category: trivy-flask-api
@@ -131,6 +133,7 @@ jobs:
       - name: Upload Trivy SARIF – react
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: trivy-react.sarif
           category: trivy-react
