@@ -9,7 +9,7 @@ Infrastructure 100% as Code avec monitoring Prometheus + Grafana integre.
 
 ```
 cloud-forge/
-├── .github/workflows/       # GitHub Actions (infra, apps, monitoring)
+├── .github/workflows/       # GitHub Actions (infra, apps, monitoring, security)
 ├── terraform/
 │   └── modules/
 │       ├── kapsule/         # Cluster Kapsule + node pool
@@ -42,7 +42,7 @@ cloud-forge/
 | Cloud | Scaleway (fr-par) |
 | Kubernetes | Scaleway Kapsule 1.34 (Cilium CNI) |
 | IaC | Terraform + provider scaleway/scaleway |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions + Trivy + Checkov + SonarCloud |
 | Registry | Scaleway Container Registry (SCR) |
 | Ingress | NGINX Ingress Controller |
 | Monitoring | Prometheus + Grafana (Helm) |
@@ -70,15 +70,50 @@ cloud-forge/
 ## Pipeline CI/CD
 
 ```
+Infrastructure :
+  checkov (scan Terraform) → deploy (terraform apply) → wait nodes ready
+
 Deploy Apps :
-  validate-yaml → build-push → deploy
+  validate-yaml → build-scan-push → deploy
+                      │
+                      ├─ docker build
+                      ├─ Trivy scan (CRITICAL/HIGH)   ← bloque si vuln corrigeable
+                      └─ docker push
 
 Deploy Monitoring :
   setup kubeconfig → Prometheus → Grafana → ingress
+
+Security Scan (push/PR sur main) :
+  sonarcloud        → analyse qualite du code
+  checkov (pip)     → scan Terraform + K8s manifests + Dockerfiles
 ```
 
 Le job `validate-yaml` parse tous les fichiers `k8s/**/*.yaml` via Python.
 Si un fichier est invalide, le pipeline s'arrete avant le build.
+
+---
+
+## Securite
+
+Trois outils de securite integres au pipeline :
+
+### Trivy — scan des images Docker
+- Declenche apres chaque `docker build`, avant le `docker push`
+- Scanne les vulnerabilites **CRITICAL** et **HIGH** avec correctif disponible
+- **Bloque le push** si une vulnerabilite corrigeable est detectee (`exit-code: 1`)
+- Cible : images `node-api`, `flask-api`, `react`
+
+### Checkov — scan IaC
+- S'execute sur chaque push et PR vers `main`
+- Analyse trois perimètres : fichiers Terraform, manifests Kubernetes, Dockerfiles
+- Mode `soft-fail` : affiche les alertes dans les logs sans bloquer le pipeline
+- Dans `infra.yml`, un job `checkov` precede le `terraform apply`
+
+### SonarCloud — qualite et securite du code
+- Analyse statique du code source (`apps/`)
+- Detecte les bugs, code smells, et vulnerabilites de securite
+- Necessite le secret `SONAR_TOKEN` (genere sur sonarcloud.io)
+- Lien projet : https://sonarcloud.io/project/overview?id=denfr18_cloud-forge
 
 ---
 
@@ -90,6 +125,7 @@ Si un fichier est invalide, le pipeline s'arrete avant le build.
 | `SCW_SECRET_KEY` | Cle secrete Scaleway |
 | `SCW_DEFAULT_ORGANIZATION_ID` | ID organisation Scaleway |
 | `SCW_DEFAULT_PROJECT_ID` | ID projet Scaleway |
+| `SONAR_TOKEN` | Token SonarCloud (genere sur sonarcloud.io) |
 
 ---
 
