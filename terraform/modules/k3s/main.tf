@@ -33,10 +33,14 @@ resource "aws_iam_role_policy" "k3s" {
   name = "policy-${var.project}-k3s-${var.environment}"
   role = aws_iam_role.k3s.id
 
+  # ecr:GetAuthorizationToken ne supporte que Resource="*" (limitation AWS).
+  # Les actions ECR de lecture sont restreintes aux repos du projet.
+  # checkov:skip=CKV_AWS_355:ecr:GetAuthorizationToken requires wildcard by AWS design
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "SSMParameters"
         Effect = "Allow"
         Action = [
           "ssm:GetParameter",
@@ -46,14 +50,20 @@ resource "aws_iam_role_policy" "k3s" {
         Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/${var.project}/*"
       },
       {
+        Sid      = "EcrAuthToken"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Sid    = "EcrPull"
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken",
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ecr:${var.aws_region}:*:repository/${var.project}/*"
       }
     ]
   })
@@ -65,9 +75,13 @@ resource "aws_iam_instance_profile" "k3s" {
 }
 
 # ─── Security Group ───────────────────────────────────────────────────────────
+# SSH/HTTP/NodePort ouverts sur 0.0.0.0/0 : projet pédagogique Free Tier sans bastion.
 resource "aws_security_group" "k3s" {
+  # checkov:skip=CKV_AWS_24:SSH open to 0.0.0.0/0 — no bastion in Free Tier setup
+  # checkov:skip=CKV_AWS_260:HTTP open to 0.0.0.0/0 — public web endpoints expected
+  # checkov:skip=CKV_AWS_382:wide egress — needed for k3s install and ECR pulls
   name        = "k3s-${var.project}-${var.environment}"
-  description = "Security group for k3s cluster"
+  description = "Security group for k3s cluster (master + workers)"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -111,10 +125,10 @@ resource "aws_security_group" "k3s" {
   }
 
   ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
     description = "Inter-node communication"
   }
 
@@ -123,6 +137,7 @@ resource "aws_security_group" "k3s" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Internet access for k3s install, updates and ECR pulls"
   }
 
   tags = merge(var.tags, { Name = "k3s-${var.project}-${var.environment}" })
@@ -135,13 +150,29 @@ resource "aws_eip" "master" {
 }
 
 # ─── Master Node ──────────────────────────────────────────────────────────────
+# Public IP requis : le master est point d'entrée du cluster et de l'API k3s.
 resource "aws_instance" "master" {
+  # checkov:skip=CKV_AWS_88:public IP required to expose k3s API and ingress
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.small"
   subnet_id                   = var.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   iam_instance_profile        = aws_iam_instance_profile.k3s.name
   associate_public_ip_address = true
+  ebs_optimized               = true
+  monitoring                  = true
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
+  root_block_device {
+    encrypted   = true
+    volume_type = "gp3"
+    volume_size = 20
+  }
 
   user_data = base64encode(templatefile("${path.module}/templates/master.sh.tpl", {
     region     = var.aws_region
@@ -162,6 +193,7 @@ resource "aws_eip_association" "master" {
 
 # ─── Worker Nodes ─────────────────────────────────────────────────────────────
 resource "aws_instance" "workers" {
+  # checkov:skip=CKV_AWS_88:public IP required for k3s worker to pull ECR images directly
   count                       = 2
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.micro"
@@ -169,6 +201,20 @@ resource "aws_instance" "workers" {
   vpc_security_group_ids      = [aws_security_group.k3s.id]
   iam_instance_profile        = aws_iam_instance_profile.k3s.name
   associate_public_ip_address = true
+  ebs_optimized               = true
+  monitoring                  = true
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
+  root_block_device {
+    encrypted   = true
+    volume_type = "gp3"
+    volume_size = 20
+  }
 
   user_data = base64encode(templatefile("${path.module}/templates/worker.sh.tpl", {
     region  = var.aws_region
