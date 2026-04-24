@@ -29,11 +29,10 @@ resource "scaleway_vpc_private_network" "this" {
 
 # --- Kapsule Cluster ---
 module "kapsule" {
-  source      = "./modules/kapsule"
-  project     = var.project
-  environment = var.environment
-  scw_region  = var.scw_region
-  tags        = local.tags
+  source             = "./modules/kapsule"
+  project            = var.project
+  environment        = var.environment
+  tags               = local.tags
   private_network_id = scaleway_vpc_private_network.this.id
 }
 

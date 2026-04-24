@@ -8,11 +8,6 @@ variable "environment" {
   type        = string
 }
 
-variable "scw_region" {
-  description = "Scaleway region"
-  type        = string
-}
-
 variable "tags" {
   description = "Tags"
   type        = list(string)
