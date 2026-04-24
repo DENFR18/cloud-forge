@@ -12,11 +12,19 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
   TF_VERSION: 1.7.0
 
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-apps-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ─── VALIDATE YAML ─────────────────────────────────────────────────────────
   validate-yaml:
     name: Validate Kubernetes YAML
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +44,11 @@ jobs:
   build-push:
     name: Build, Scan & Push Images to SCR
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: validate-yaml
+    permissions:
+      contents: read
+      security-events: write
 
     outputs:
       registry: ${{ steps.get-registry.outputs.registry }}
@@ -60,7 +72,10 @@ jobs:
           echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
 
       - name: Login to Scaleway Container Registry
-        run: docker login ${{ steps.get-registry.outputs.registry }} -u nologin --password-stdin <<< "${{ secrets.SCW_SECRET_KEY }}"
+        env:
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          REGISTRY: ${{ steps.get-registry.outputs.registry }}
+        run: echo "$SCW_SECRET_KEY" | docker login "$REGISTRY" -u nologin --password-stdin
 
       # ── node-api ──
       - name: Build node-api
@@ -142,6 +157,7 @@ jobs:
   deploy:
     name: Deploy to Kapsule
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build-push
 
     steps:

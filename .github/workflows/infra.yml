@@ -20,12 +20,23 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
 
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ─── CHECKOV ────────────────────────────────────────────────────────────────
   checkov:
     name: Checkov – Terraform Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event.inputs.action == 'deploy'
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +48,8 @@ jobs:
           framework: terraform
           output_format: cli,sarif
           output_file_path: console,checkov-infra.sarif
-          soft_fail: true
+          soft_fail: false
+          hard_fail_on: CRITICAL,HIGH
 
       - name: Upload Terraform SARIF
         uses: github/codeql-action/upload-sarif@v3
@@ -51,8 +63,10 @@ jobs:
   deploy:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: checkov
     if: github.event.inputs.action == 'deploy'
+    environment: production
     defaults:
       run:
         working-directory: terraform
@@ -132,6 +146,7 @@ jobs:
   destroy:
     name: Destroy Infrastructure
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.event.inputs.action == 'destroy'
     environment: production
     defaults:
