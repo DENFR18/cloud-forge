@@ -12,10 +12,18 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
   TF_VERSION: 1.7.0
 
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-monitoring-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   monitoring:
     name: Deploy Prometheus & Grafana
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -73,11 +81,8 @@ jobs:
           sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" monitoring/ingress.yaml
           kubectl apply -f monitoring/ingress.yaml
 
-      - name: Get Grafana credentials
+      - name: Summary
         run: |
-          PASSWORD=$(kubectl get secret grafana \
-            -n monitoring \
-            -o jsonpath="{.data.admin-password}" | base64 --decode)
           LB_IP=$(kubectl get svc ingress-nginx-controller \
             -n ingress-nginx \
             -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
@@ -88,5 +93,8 @@ jobs:
           echo "  Grafana    : http://grafana.$INGRESS_HOST"
           echo "  Prometheus : http://prometheus.$INGRESS_HOST"
           echo ""
-          echo "  Grafana login    : admin"
-          echo "  Grafana password : $PASSWORD"
+          echo "  Grafana login : admin"
+          echo "  Grafana password : recupere-le avec la commande ci-dessous"
+          echo ""
+          echo '  kubectl get secret grafana -n monitoring \'
+          echo '    -o jsonpath="{.data.admin-password}" | base64 --decode'
