@@ -41,5 +41,4 @@ module "registry" {
   source      = "./modules/registry"
   project     = var.project
   environment = var.environment
-  tags        = local.tags
 }
