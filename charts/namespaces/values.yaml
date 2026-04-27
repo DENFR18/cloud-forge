@@ -1,0 +1,38 @@
+namespaces:
+  - name: stack-wordpress
+    quota:
+      requestsCpu: "1"
+      requestsMemory: 1Gi
+      limitsCpu: "2"
+      limitsMemory: 2Gi
+  - name: stack-ghost
+    quota:
+      requestsCpu: 500m
+      requestsMemory: 512Mi
+      limitsCpu: "1"
+      limitsMemory: 1Gi
+  - name: stack-gitea
+    quota:
+      requestsCpu: 500m
+      requestsMemory: 512Mi
+      limitsCpu: "1"
+      limitsMemory: 1Gi
+  - name: stack-node-api
+    quota:
+      requestsCpu: 200m
+      requestsMemory: 256Mi
+      limitsCpu: 500m
+      limitsMemory: 512Mi
+  - name: stack-flask-api
+    quota:
+      requestsCpu: 200m
+      requestsMemory: 256Mi
+      limitsCpu: 500m
+      limitsMemory: 512Mi
+  - name: stack-react
+    quota:
+      requestsCpu: 200m
+      requestsMemory: 256Mi
+      limitsCpu: 500m
+      limitsMemory: 512Mi
+  - name: stack-portal

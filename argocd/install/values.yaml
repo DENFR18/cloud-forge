@@ -1,0 +1,17 @@
+global:
+  domain: argocd.local
+
+server:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+applicationSet:
+  enabled: true

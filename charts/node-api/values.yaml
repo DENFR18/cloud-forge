@@ -1,0 +1,28 @@
+namespace: stack-node-api
+
+image:
+  registry: ECR_REGISTRY
+  repository: node-api
+  tag: latest
+  pullPolicy: Always
+  pullSecret: scr-credentials
+
+replicaCount: 1
+
+containerPort: 3000
+servicePort: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /api
+  pathType: Prefix
+  rewriteTarget: /

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: namespaces
+description: Cloud Forge - Namespaces and ResourceQuotas
+type: application
+version: 0.1.0

@@ -1,0 +1,18 @@
+namespace: stack-gitea
+ingressHost: example.nip.io
+
+image: gitea/gitea:1.21
+storage: 5Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  hostPrefix: gitea

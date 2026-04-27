@@ -9,12 +9,12 @@ Infrastructure 100% as Code avec monitoring Prometheus + Grafana integre.
 
 ```
 cloud-forge/
-├── .github/workflows/       # GitHub Actions (infra, apps, monitoring, security)
+├── .github/workflows/       # GitHub Actions (infra, argocd, apps, monitoring, security)
 ├── terraform/
 │   └── modules/
 │       ├── kapsule/         # Cluster Kapsule + node pool
 │       └── registry/        # Scaleway Container Registry (SCR)
-├── k8s/                     # Manifestes Kubernetes par stack
+├── charts/                  # Helm charts (source de verite GitOps)
 │   ├── namespaces/          # Namespaces + ResourceQuotas
 │   ├── wordpress/           # WordPress + MySQL
 │   ├── ghost/               # Ghost (SQLite)
@@ -22,6 +22,11 @@ cloud-forge/
 │   ├── node-api/            # API Express.js
 │   ├── flask-api/           # API Flask
 │   └── react/               # Portail React
+├── argocd/                  # Configuration ArgoCD (GitOps)
+│   ├── install/values.yaml  # Helm values pour l'install ArgoCD
+│   ├── project.yaml         # AppProject cloud-forge
+│   ├── root-app.yaml        # App-of-apps (pointe vers applications/)
+│   └── applications/        # 1 Application par chart
 ├── apps/
 │   ├── node-api/            # API Express.js (Node 20)
 │   ├── flask-api/           # API Flask + Gunicorn (Python 3.12)
@@ -43,6 +48,7 @@ cloud-forge/
 | Kubernetes | Scaleway Kapsule 1.34 (Cilium CNI) |
 | IaC | Terraform + provider scaleway/scaleway |
 | CI/CD | GitHub Actions + Trivy + Checkov + SonarCloud |
+| GitOps | ArgoCD (Helm charts, app-of-apps) |
 | Registry | Scaleway Container Registry (SCR) |
 | Ingress | NGINX Ingress Controller |
 | Monitoring | Prometheus + Grafana (Helm) |
@@ -73,12 +79,17 @@ cloud-forge/
 Infrastructure :
   checkov (scan Terraform) → deploy (terraform apply) → wait nodes ready
 
+Deploy ArgoCD :
+  helm install argocd → apply project + root-app (app-of-apps)
+                      → root-app reconcilie automatiquement
+                        toutes les Applications dans argocd/applications/
+
 Deploy Apps :
-  validate-yaml → build-scan-push → deploy
-                      │
-                      ├─ docker build
-                      ├─ Trivy scan (CRITICAL/HIGH)   ← bloque si vuln corrigeable
-                      └─ docker push
+  validate-yaml + helm-lint → build-scan-push → sync via ArgoCD
+                                    │                   │
+                                    ├─ docker build     ├─ argocd app set (registry/tag/host)
+                                    ├─ Trivy scan       └─ argocd app sync + wait health
+                                    └─ docker push (tag = SHA + latest)
 
 Deploy Monitoring :
   setup kubeconfig → Prometheus → Grafana → ingress
@@ -88,7 +99,8 @@ Security Scan (push/PR sur main) :
   checkov (pip)     → scan Terraform + K8s manifests + Dockerfiles
 ```
 
-Le job `validate-yaml` parse tous les fichiers `k8s/**/*.yaml` via Python.
+Le job `validate-yaml` parse tous les fichiers `k8s/**` et `argocd/**` via Python.
+Le job `validate-helm` execute `helm lint` + `helm template` sur chaque chart.
 Si un fichier est invalide, le pipeline s'arrete avant le build.
 
 ---
@@ -126,6 +138,8 @@ Trois outils de securite integres au pipeline :
 | `SCW_DEFAULT_ORGANIZATION_ID` | ID organisation Scaleway |
 | `SCW_DEFAULT_PROJECT_ID` | ID projet Scaleway |
 | `SONAR_TOKEN` | Token SonarCloud (genere sur sonarcloud.io) |
+| `MYSQL_ROOT_PASSWORD` | (optionnel) Mot de passe root MySQL pour WordPress. Genere si absent. |
+| `MYSQL_USER_PASSWORD` | (optionnel) Mot de passe utilisateur MySQL pour WordPress. Genere si absent. |
 
 ---
 
@@ -135,8 +149,21 @@ Lancer les workflows dans cet ordre :
 
 ```
 1. Actions -> Infrastructure      -> Run workflow -> deploy
-2. Actions -> Deploy Apps         -> Run workflow
-3. Actions -> Deploy Monitoring   -> Run workflow
+2. Actions -> Deploy ArgoCD       -> Run workflow         (premiere fois uniquement)
+3. Actions -> Deploy Apps         -> Run workflow         (build images + sync ArgoCD)
+4. Actions -> Deploy Monitoring   -> Run workflow
+```
+
+A partir du 2eme run, ArgoCD reconcilie automatiquement les charts a chaque commit
+sur la branche cible (`syncPolicy.automated.selfHeal=true`). Le workflow `Deploy Apps`
+n'a besoin de tourner que pour reconstruire les images custom (node-api, flask-api, react).
+
+### Acces ArgoCD UI
+
+```
+kubectl -n argocd port-forward svc/argocd-server 8080:443
+# https://localhost:8080  - user: admin
+# password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
 ```
 
 Le workflow Infrastructure cree automatiquement le bucket S3 pour le state Terraform.

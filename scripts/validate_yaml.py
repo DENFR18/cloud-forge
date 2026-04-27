@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 validate_yaml.py
-Parcourt tous les fichiers YAML du dossier k8s/ et vérifie leur syntaxe.
+Parcourt les YAML statiques (argocd/) et vérifie leur syntaxe.
+Les templates Helm (charts/*/templates/) sont validés par `helm lint` dans le CI.
 Exit code 1 si une erreur est détectée — bloque le pipeline CI/CD.
 """
 
@@ -9,27 +10,32 @@ import sys
 import os
 import yaml
 
-ROOT_DIR = os.path.join(os.path.dirname(__file__), "..", "k8s")
+ROOT_DIRS = [
+    os.path.join(os.path.dirname(__file__), "..", "argocd"),
+]
 EXTENSIONS = (".yaml", ".yml")
 
 errors = []
 checked = 0
 
-for dirpath, _, filenames in os.walk(ROOT_DIR):
-    for filename in filenames:
-        if not filename.endswith(EXTENSIONS):
-            continue
+for root in ROOT_DIRS:
+    if not os.path.isdir(root):
+        continue
+    for dirpath, _, filenames in os.walk(root):
+        for filename in filenames:
+            if not filename.endswith(EXTENSIONS):
+                continue
 
-        filepath = os.path.join(dirpath, filename)
-        checked += 1
+            filepath = os.path.join(dirpath, filename)
+            checked += 1
 
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                list(yaml.safe_load_all(f))
-            print(f"  OK  {filepath}")
-        except yaml.YAMLError as e:
-            errors.append((filepath, str(e)))
-            print(f"  FAIL  {filepath}\n       {e}")
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    list(yaml.safe_load_all(f))
+                print(f"  OK  {filepath}")
+            except yaml.YAMLError as e:
+                errors.append((filepath, str(e)))
+                print(f"  FAIL  {filepath}\n       {e}")
 
 print(f"\n{checked} fichier(s) verifie(s), {len(errors)} erreur(s) detectee(s).")
 

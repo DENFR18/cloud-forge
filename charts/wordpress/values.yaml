@@ -1,0 +1,34 @@
+namespace: stack-wordpress
+ingressHost: example.nip.io
+
+mysql:
+  image: mysql:8.0
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  database: wordpress
+  user: wordpress
+  # Credentials live in Secret "mysql-secret" (keys: MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD)
+  # provisioned out-of-band by the CI from GitHub Secrets - never stored in Git.
+  existingSecret: mysql-secret
+
+wordpress:
+  image: wordpress:6.4-apache
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  hostPrefix: wordpress

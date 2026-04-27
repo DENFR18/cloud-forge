@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cloud-forge
+  namespace: argocd
+spec:
+  description: Cloud Forge applications
+  sourceRepos:
+    - https://github.com/denfr18/cloud-forge
+    - https://github.com/denfr18/cloud-forge.git
+  destinations:
+    - namespace: "stack-*"
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: ""
+      kind: ResourceQuota
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
