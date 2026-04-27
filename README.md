@@ -27,7 +27,6 @@ cloud-forge/
 │   ├── project.yaml         # AppProject cloud-forge
 │   ├── root-app.yaml        # App-of-apps (pointe vers applications/)
 │   └── applications/        # 1 Application par chart
-├── k8s/                     # Manifestes legacy (conservés pour reference)
 ├── apps/
 │   ├── node-api/            # API Express.js (Node 20)
 │   ├── flask-api/           # API Flask + Gunicorn (Python 3.12)

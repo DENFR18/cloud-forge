@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 validate_yaml.py
-Parcourt les YAML statiques (k8s/, argocd/) et vérifie leur syntaxe.
+Parcourt les YAML statiques (argocd/) et vérifie leur syntaxe.
 Les templates Helm (charts/*/templates/) sont validés par `helm lint` dans le CI.
 Exit code 1 si une erreur est détectée — bloque le pipeline CI/CD.
 """
@@ -11,7 +11,6 @@ import os
 import yaml
 
 ROOT_DIRS = [
-    os.path.join(os.path.dirname(__file__), "..", "k8s"),
     os.path.join(os.path.dirname(__file__), "..", "argocd"),
 ]
 EXTENSIONS = (".yaml", ".yml")

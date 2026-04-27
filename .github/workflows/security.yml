@@ -53,8 +53,8 @@ jobs:
       - name: Scan Terraform
         run: checkov -d terraform/ --framework terraform --output sarif --soft-fail > checkov-terraform.sarif || true
 
-      - name: Scan Kubernetes manifests
-        run: checkov -d k8s/ --framework kubernetes --output sarif --soft-fail > checkov-k8s.sarif || true
+      - name: Scan Helm charts
+        run: checkov -d charts/ --framework helm --output sarif --soft-fail > checkov-k8s.sarif || true
 
       - name: Scan Dockerfiles
         run: checkov -d apps/ --framework dockerfile --output sarif --soft-fail > checkov-dockerfiles.sarif || true
