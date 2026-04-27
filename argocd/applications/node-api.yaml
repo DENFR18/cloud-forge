@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloud-forge
+  source:
+    repoURL: https://github.com/denfr18/cloud-forge
+    targetRevision: claude/integrate-argocd-giiVs
+    path: charts/node-api
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stack-node-api
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

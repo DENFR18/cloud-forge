@@ -1,0 +1,28 @@
+namespace: stack-flask-api
+
+image:
+  registry: ECR_REGISTRY
+  repository: flask-api
+  tag: latest
+  pullPolicy: Always
+  pullSecret: scr-credentials
+
+replicaCount: 1
+
+containerPort: 5000
+servicePort: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /flask
+  pathType: Prefix
+  rewriteTarget: /

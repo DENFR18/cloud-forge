@@ -1,0 +1,23 @@
+{{- range .Values.namespaces }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .name }}
+  labels:
+    project: cloud-forge
+{{- if .quota }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota
+  namespace: {{ .name }}
+spec:
+  hard:
+    requests.cpu: {{ .quota.requestsCpu | quote }}
+    requests.memory: {{ .quota.requestsMemory | quote }}
+    limits.cpu: {{ .quota.limitsCpu | quote }}
+    limits.memory: {{ .quota.limitsMemory | quote }}
+{{- end }}
+{{- end }}

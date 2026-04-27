@@ -1,0 +1,33 @@
+namespace: stack-wordpress
+ingressHost: example.nip.io
+
+mysql:
+  image: mysql:8.0
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  rootPassword: cloudforge2024
+  database: wordpress
+  user: wordpress
+  password: wordpress2024
+
+wordpress:
+  image: wordpress:6.4-apache
+  storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  hostPrefix: wordpress

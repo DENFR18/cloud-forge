@@ -1,0 +1,27 @@
+namespace: stack-react
+
+image:
+  registry: ECR_REGISTRY
+  repository: react
+  tag: latest
+  pullPolicy: Always
+  pullSecret: scr-credentials
+
+replicaCount: 1
+
+containerPort: 80
+servicePort: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /
+  pathType: Prefix

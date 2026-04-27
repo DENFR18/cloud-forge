@@ -20,7 +20,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ─── VALIDATE YAML ─────────────────────────────────────────────────────────
   validate-yaml:
     name: Validate Kubernetes YAML
     runs-on: ubuntu-latest
@@ -40,18 +39,38 @@ jobs:
       - name: Run YAML validation
         run: python scripts/validate_yaml.py
 
-  # ─── BUILD, SCAN & PUSH custom images ─────────────────────────────────────
+  validate-helm:
+    name: Lint and template Helm charts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint and template each chart
+        run: |
+          for chart in charts/*/; do
+            echo "=== Linting $chart ==="
+            helm lint "$chart"
+            echo "=== Templating $chart ==="
+            helm template "$chart" >/dev/null
+          done
+
   build-push:
     name: Build, Scan & Push Images to SCR
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: validate-yaml
+    needs: [validate-yaml, validate-helm]
     permissions:
       contents: read
       security-events: write
 
     outputs:
       registry: ${{ steps.get-registry.outputs.registry }}
+      tag: ${{ steps.tag.outputs.tag }}
 
     steps:
       - name: Checkout
@@ -71,20 +90,27 @@ jobs:
           REGISTRY=$(terraform output -raw registry_endpoint)
           echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
 
+      - name: Compute image tag
+        id: tag
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
       - name: Login to Scaleway Container Registry
         env:
           SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
           REGISTRY: ${{ steps.get-registry.outputs.registry }}
         run: echo "$SCW_SECRET_KEY" | docker login "$REGISTRY" -u nologin --password-stdin
 
-      # ── node-api ──
       - name: Build node-api
-        run: docker build -t ${{ steps.get-registry.outputs.registry }}/node-api:latest apps/node-api
+        run: |
+          docker build \
+            -t ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }} \
+            -t ${{ steps.get-registry.outputs.registry }}/node-api:latest \
+            apps/node-api
 
       - name: Trivy scan – node-api
         uses: aquasecurity/trivy-action@0.30.0
         with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/node-api:latest
+          image-ref: ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }}
           format: sarif
           output: trivy-node-api.sarif
           severity: CRITICAL,HIGH
@@ -92,16 +118,21 @@ jobs:
           ignore-unfixed: true
 
       - name: Push node-api
-        run: docker push ${{ steps.get-registry.outputs.registry }}/node-api:latest
+        run: |
+          docker push ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }}
+          docker push ${{ steps.get-registry.outputs.registry }}/node-api:latest
 
-      # ── flask-api ──
       - name: Build flask-api
-        run: docker build -t ${{ steps.get-registry.outputs.registry }}/flask-api:latest apps/flask-api
+        run: |
+          docker build \
+            -t ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }} \
+            -t ${{ steps.get-registry.outputs.registry }}/flask-api:latest \
+            apps/flask-api
 
       - name: Trivy scan – flask-api
         uses: aquasecurity/trivy-action@0.30.0
         with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/flask-api:latest
+          image-ref: ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }}
           format: sarif
           output: trivy-flask-api.sarif
           severity: CRITICAL,HIGH
@@ -109,16 +140,21 @@ jobs:
           ignore-unfixed: true
 
       - name: Push flask-api
-        run: docker push ${{ steps.get-registry.outputs.registry }}/flask-api:latest
+        run: |
+          docker push ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }}
+          docker push ${{ steps.get-registry.outputs.registry }}/flask-api:latest
 
-      # ── react ──
       - name: Build react
-        run: docker build -t ${{ steps.get-registry.outputs.registry }}/react:latest apps/react
+        run: |
+          docker build \
+            -t ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }} \
+            -t ${{ steps.get-registry.outputs.registry }}/react:latest \
+            apps/react
 
       - name: Trivy scan – react
         uses: aquasecurity/trivy-action@0.30.0
         with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/react:latest
+          image-ref: ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }}
           format: sarif
           output: trivy-react.sarif
           severity: CRITICAL,HIGH
@@ -126,36 +162,12 @@ jobs:
           ignore-unfixed: true
 
       - name: Push react
-        run: docker push ${{ steps.get-registry.outputs.registry }}/react:latest
+        run: |
+          docker push ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }}
+          docker push ${{ steps.get-registry.outputs.registry }}/react:latest
 
-      # ── Upload SARIF reports ──
-      - name: Upload Trivy SARIF – node-api
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: trivy-node-api.sarif
-          category: trivy-node-api
-
-      - name: Upload Trivy SARIF – flask-api
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: trivy-flask-api.sarif
-          category: trivy-flask-api
-
-      - name: Upload Trivy SARIF – react
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: trivy-react.sarif
-          category: trivy-react
-
-  # ─── DEPLOY to Kapsule ────────────────────────────────────────────────────
   deploy:
-    name: Deploy to Kapsule
+    name: Sync via ArgoCD
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: build-push
@@ -195,25 +207,24 @@ jobs:
             --set controller.admissionWebhooks.patch.enabled=false \
             --timeout 8m
 
-      - name: Apply namespaces
-        run: kubectl apply -f k8s/namespaces/
-
-      - name: Create registry secret for all app namespaces
+      - name: Ensure ArgoCD is installed
         run: |
-          REGISTRY="${{ needs.build-push.outputs.registry }}"
-          for NS in stack-react stack-node-api stack-flask-api stack-wordpress stack-ghost stack-gitea; do
-            kubectl create secret docker-registry scr-credentials \
-              --docker-server="$REGISTRY" \
-              --docker-username=nologin \
-              --docker-password="${{ secrets.SCW_SECRET_KEY }}" \
-              --namespace="$NS" \
-              --dry-run=client -o yaml | kubectl apply -f -
-          done
+          if ! kubectl get ns argocd >/dev/null 2>&1; then
+            helm repo add argo https://argoproj.github.io/argo-helm
+            helm repo update
+            kubectl create namespace argocd
+            helm upgrade --install argocd argo/argo-cd \
+              --namespace argocd \
+              --values argocd/install/values.yaml \
+              --timeout 10m \
+              --wait
+          fi
+          kubectl apply -f argocd/project.yaml
+          kubectl apply -f argocd/root-app.yaml
 
       - name: Get Load Balancer IP
         id: lb
         run: |
-          echo "Waiting for Load Balancer IP..."
           for i in $(seq 1 30); do
             LB_IP=$(kubectl get svc ingress-nginx-controller \
               -n ingress-nginx \
@@ -227,34 +238,76 @@ jobs:
             sleep 10
           done
 
-      - name: Deploy apps
+      - name: Seed registry pull secrets
+        run: |
+          REGISTRY="${{ needs.build-push.outputs.registry }}"
+          for NS in stack-react stack-node-api stack-flask-api stack-wordpress stack-ghost stack-gitea; do
+            kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create secret docker-registry scr-credentials \
+              --docker-server="$REGISTRY" \
+              --docker-username=nologin \
+              --docker-password="${{ secrets.SCW_SECRET_KEY }}" \
+              --namespace="$NS" \
+              --dry-run=client -o yaml | kubectl apply -f -
+          done
+
+      - name: Install ArgoCD CLI
+        run: |
+          sudo curl -sSL -o /usr/local/bin/argocd \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          sudo chmod +x /usr/local/bin/argocd
+
+      - name: Login to ArgoCD
+        run: |
+          kubectl -n argocd port-forward svc/argocd-server 8080:443 &
+          sleep 5
+          PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+            -o jsonpath='{.data.password}' | base64 -d)
+          argocd login localhost:8080 \
+            --username admin \
+            --password "$PASSWORD" \
+            --insecure
+
+      - name: Wait for Applications to be created by root app
+        run: |
+          for app in namespaces node-api flask-api react wordpress ghost gitea; do
+            for i in $(seq 1 30); do
+              if kubectl -n argocd get application "$app" >/dev/null 2>&1; then
+                echo "Application $app exists"
+                break
+              fi
+              echo "Waiting for Application $app..."
+              sleep 5
+            done
+          done
+
+      - name: Override runtime parameters (registry, tag, ingress host)
         env:
-          SCR_REGISTRY: ${{ needs.build-push.outputs.registry }}
+          REGISTRY: ${{ needs.build-push.outputs.registry }}
+          IMAGE_TAG: ${{ needs.build-push.outputs.tag }}
           INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
-          sed -i "s|ECR_REGISTRY|$SCR_REGISTRY|g" k8s/node-api/stack.yaml
-          sed -i "s|ECR_REGISTRY|$SCR_REGISTRY|g" k8s/flask-api/stack.yaml
-          sed -i "s|ECR_REGISTRY|$SCR_REGISTRY|g" k8s/react/stack.yaml
-          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/wordpress/ingress.yaml
-          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/ghost/ingress.yaml
-          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/ghost/stack.yaml
-          sed -i "s|INGRESS_HOST|$INGRESS_HOST|g" k8s/gitea/ingress.yaml
+          for app in node-api flask-api react; do
+            argocd app set "$app" \
+              -p image.registry="$REGISTRY" \
+              -p image.tag="$IMAGE_TAG"
+          done
+          for app in wordpress ghost gitea; do
+            argocd app set "$app" \
+              -p ingressHost="$INGRESS_HOST"
+          done
 
-          kubectl apply -f k8s/wordpress/
-          kubectl apply -f k8s/ghost/
-          kubectl apply -f k8s/gitea/
-          kubectl apply -f k8s/node-api/
-          kubectl apply -f k8s/flask-api/
-          kubectl apply -f k8s/react/
-
-      - name: Restart custom image deployments
+      - name: Sync all applications
         run: |
-          kubectl rollout restart deployment/react -n stack-react
-          kubectl rollout restart deployment/node-api -n stack-node-api
-          kubectl rollout restart deployment/flask-api -n stack-flask-api
-          kubectl rollout status deployment/react -n stack-react --timeout=180s
-          kubectl rollout status deployment/node-api -n stack-node-api --timeout=180s
-          kubectl rollout status deployment/flask-api -n stack-flask-api --timeout=180s
+          for app in namespaces node-api flask-api react wordpress ghost gitea; do
+            argocd app sync "$app" --timeout 300
+          done
+
+      - name: Wait for healthy status
+        run: |
+          for app in namespaces node-api flask-api react wordpress ghost gitea; do
+            argocd app wait "$app" --health --timeout 300
+          done
 
       - name: Summary
         env:
@@ -262,7 +315,7 @@ jobs:
           INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
           echo "================================================"
-          echo "  APPLICATIONS DEPLOYEES"
+          echo "  APPLICATIONS DEPLOYEES (via ArgoCD)"
           echo "================================================"
           echo "Load Balancer IP : $LB_IP"
           echo "Wildcard DNS     : *.$INGRESS_HOST"
@@ -273,3 +326,5 @@ jobs:
           echo "  Gitea      : http://gitea.$INGRESS_HOST"
           echo "  Node API   : http://$LB_IP/api"
           echo "  Flask API  : http://$LB_IP/flask"
+          echo ""
+          echo "  ArgoCD UI : kubectl -n argocd port-forward svc/argocd-server 8080:443"

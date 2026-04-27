@@ -1,0 +1,18 @@
+namespace: stack-ghost
+ingressHost: example.nip.io
+
+image: ghost:5-alpine
+storage: 2Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  hostPrefix: ghost
