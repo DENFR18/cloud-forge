@@ -139,6 +139,8 @@ Trois outils de securite integres au pipeline :
 | `SCW_DEFAULT_ORGANIZATION_ID` | ID organisation Scaleway |
 | `SCW_DEFAULT_PROJECT_ID` | ID projet Scaleway |
 | `SONAR_TOKEN` | Token SonarCloud (genere sur sonarcloud.io) |
+| `MYSQL_ROOT_PASSWORD` | (optionnel) Mot de passe root MySQL pour WordPress. Genere si absent. |
+| `MYSQL_USER_PASSWORD` | (optionnel) Mot de passe utilisateur MySQL pour WordPress. Genere si absent. |
 
 ---
 

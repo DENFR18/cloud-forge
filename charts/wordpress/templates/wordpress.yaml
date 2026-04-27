@@ -24,7 +24,10 @@ spec:
             - name: WORDPRESS_DB_USER
               value: {{ .Values.mysql.user | quote }}
             - name: WORDPRESS_DB_PASSWORD
-              value: {{ .Values.mysql.password | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysql.existingSecret }}
+                  key: MYSQL_PASSWORD
           ports:
             - containerPort: 80
           volumeMounts:

@@ -11,10 +11,11 @@ mysql:
     limits:
       cpu: 500m
       memory: 512Mi
-  rootPassword: cloudforge2024
   database: wordpress
   user: wordpress
-  password: wordpress2024
+  # Credentials live in Secret "mysql-secret" (keys: MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD)
+  # provisioned out-of-band by the CI from GitHub Secrets - never stored in Git.
+  existingSecret: mysql-secret
 
 wordpress:
   image: wordpress:6.4-apache

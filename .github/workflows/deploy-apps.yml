@@ -251,22 +251,29 @@ jobs:
               --dry-run=client -o yaml | kubectl apply -f -
           done
 
+      - name: Seed MySQL secret for WordPress
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_USER_PASSWORD }}
+        run: |
+          # If MYSQL_ROOT_PASSWORD / MYSQL_USER_PASSWORD GitHub Secrets are unset,
+          # generate strong randoms once - they persist in the cluster Secret across runs.
+          if kubectl -n stack-wordpress get secret mysql-secret >/dev/null 2>&1; then
+            echo "mysql-secret already exists, leaving it untouched"
+            exit 0
+          fi
+          ROOT_PWD="${MYSQL_ROOT_PASSWORD:-$(openssl rand -base64 24)}"
+          USER_PWD="${MYSQL_PASSWORD:-$(openssl rand -base64 24)}"
+          kubectl create secret generic mysql-secret \
+            --namespace stack-wordpress \
+            --from-literal=MYSQL_ROOT_PASSWORD="$ROOT_PWD" \
+            --from-literal=MYSQL_PASSWORD="$USER_PWD"
+
       - name: Install ArgoCD CLI
         run: |
           sudo curl -sSL -o /usr/local/bin/argocd \
             https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           sudo chmod +x /usr/local/bin/argocd
-
-      - name: Login to ArgoCD
-        run: |
-          kubectl -n argocd port-forward svc/argocd-server 8080:443 &
-          sleep 5
-          PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-            -o jsonpath='{.data.password}' | base64 -d)
-          argocd login localhost:8080 \
-            --username admin \
-            --password "$PASSWORD" \
-            --insecure
 
       - name: Wait for Applications to be created by root app
         run: |
@@ -288,25 +295,25 @@ jobs:
           INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
           for app in node-api flask-api react; do
-            argocd app set "$app" \
+            argocd app set "$app" --core \
               -p image.registry="$REGISTRY" \
               -p image.tag="$IMAGE_TAG"
           done
           for app in wordpress ghost gitea; do
-            argocd app set "$app" \
+            argocd app set "$app" --core \
               -p ingressHost="$INGRESS_HOST"
           done
 
       - name: Sync all applications
         run: |
           for app in namespaces node-api flask-api react wordpress ghost gitea; do
-            argocd app sync "$app" --timeout 300
+            argocd app sync "$app" --core --timeout 300
           done
 
       - name: Wait for healthy status
         run: |
           for app in namespaces node-api flask-api react wordpress ghost gitea; do
-            argocd app wait "$app" --health --timeout 300
+            argocd app wait "$app" --core --health --timeout 300
           done
 
       - name: Summary

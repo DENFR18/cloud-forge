@@ -1,10 +1,6 @@
 global:
   domain: argocd.local
 
-configs:
-  params:
-    server.insecure: true
-
 server:
   service:
     type: ClusterIP
