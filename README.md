@@ -68,6 +68,7 @@ cloud-forge/
 | Node API | `stack-node-api` | SCR | `<IP>.nip.io/api` |
 | Flask API | `stack-flask-api` | SCR | `<IP>.nip.io/flask` |
 | Portail React | `stack-react` | SCR | `<IP>.nip.io` |
+| ArgoCD UI | `argocd` | Helm | `argocd.<IP>.nip.io` |
 | Grafana | `monitoring` | Helm | `grafana.<IP>.nip.io` |
 | Prometheus | `monitoring` | Helm | `prometheus.<IP>.nip.io` |
 
@@ -99,8 +100,8 @@ Security Scan (push/PR sur main) :
   checkov (pip)     → scan Terraform + K8s manifests + Dockerfiles
 ```
 
-Le job `validate-yaml` parse tous les fichiers `k8s/**` et `argocd/**` via Python.
-Le job `validate-helm` execute `helm lint` + `helm template` sur chaque chart.
+Le job `validate-yaml` parse tous les fichiers `argocd/**` via Python.
+Le job `validate-helm` execute `helm lint` + `helm template` sur chaque chart `charts/*/`.
 Si un fichier est invalide, le pipeline s'arrete avant le build.
 
 ---
@@ -112,12 +113,12 @@ Trois outils de securite integres au pipeline :
 ### Trivy — scan des images Docker
 - Declenche apres chaque `docker build`, avant le `docker push`
 - Scanne les vulnerabilites **CRITICAL** et **HIGH** avec correctif disponible
-- **Bloque le push** si une vulnerabilite corrigeable est detectee (`exit-code: 1`)
+- Mode **report-only** (`exit-code: 0`) : les CVEs remontent dans l'onglet Security via SARIF mais ne bloquent pas le deploy. Re-passer a `exit-code: 1` quand les Dockerfiles seront pinnes.
 - Cible : images `node-api`, `flask-api`, `react`
 
 ### Checkov — scan IaC
 - S'execute sur chaque push et PR vers `main`
-- Analyse trois perimètres : fichiers Terraform, manifests Kubernetes, Dockerfiles
+- Analyse trois perimètres : fichiers Terraform, charts Helm, Dockerfiles
 - Mode `soft-fail` : affiche les alertes dans les logs sans bloquer le pipeline
 - Dans `infra.yml`, un job `checkov` precede le `terraform apply`
 
