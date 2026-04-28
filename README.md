@@ -160,6 +160,11 @@ n'a besoin de tourner que pour reconstruire les images custom (node-api, flask-a
 
 ### Acces ArgoCD UI
 
+ArgoCD est expose publiquement via NGINX Ingress sur `argocd.<LB_IP>.nip.io`.
+L'URL exacte + le mot de passe admin sont affiches a la fin du workflow `Deploy ArgoCD`.
+
+Fallback (port-forward local) :
+
 ```
 kubectl -n argocd port-forward svc/argocd-server 8080:443
 # https://localhost:8080  - user: admin

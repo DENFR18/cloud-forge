@@ -108,7 +108,7 @@ jobs:
             apps/node-api
 
       - name: Trivy scan – node-api
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }}
           format: sarif
@@ -130,7 +130,7 @@ jobs:
             apps/flask-api
 
       - name: Trivy scan – flask-api
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }}
           format: sarif
@@ -152,7 +152,7 @@ jobs:
             apps/react
 
       - name: Trivy scan – react
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }}
           format: sarif
@@ -196,7 +196,7 @@ jobs:
           terraform output -raw kubeconfig > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Install NGINX Ingress Controller
+      - name: Install NGINX Ingress Controller (idempotent)
         run: |
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo update
@@ -210,14 +210,8 @@ jobs:
       - name: Ensure ArgoCD is installed
         run: |
           if ! kubectl get ns argocd >/dev/null 2>&1; then
-            helm repo add argo https://argoproj.github.io/argo-helm
-            helm repo update
-            kubectl create namespace argocd
-            helm upgrade --install argocd argo/argo-cd \
-              --namespace argocd \
-              --values argocd/install/values.yaml \
-              --timeout 10m \
-              --wait
+            echo "ArgoCD not found - run the 'Deploy ArgoCD' workflow first."
+            exit 1
           fi
           kubectl apply -f argocd/project.yaml
           kubectl apply -f argocd/root-app.yaml

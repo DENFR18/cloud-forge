@@ -1,11 +1,21 @@
 global:
   domain: argocd.local
 
+# server.insecure makes argocd-server listen plain HTTP internally so the NGINX
+# ingress can reverse-proxy without TLS-to-TLS gymnastics. Acceptable for the
+# nip.io demo setup; for production, terminate TLS at the ingress with a real
+# cert (cert-manager + Let's Encrypt) and remove this flag.
+configs:
+  params:
+    server.insecure: true
+
 server:
   service:
     type: ClusterIP
   ingress:
-    enabled: false
+    enabled: true
+    ingressClassName: nginx
+    # hostname is set at install time by the workflow (argocd.<LB_IP>.nip.io)
 
 dex:
   enabled: false
