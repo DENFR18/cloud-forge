@@ -9,7 +9,7 @@ spec:
   project: cloud-forge
   source:
     repoURL: https://github.com/denfr18/cloud-forge
-    targetRevision: claude/integrate-argocd-giiVs
+    targetRevision: main
     path: charts/node-api
     helm:
       valueFiles:
