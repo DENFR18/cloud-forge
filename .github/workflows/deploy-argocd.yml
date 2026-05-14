@@ -113,15 +113,23 @@ jobs:
 
       - name: Summary
         env:
-          ARGOCD_URL: http://argocd.${{ steps.lb.outputs.host }}
+          LB_IP: ${{ steps.lb.outputs.ip }}
+          INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
-          echo "================================================"
-          echo "  ArgoCD installed and exposed publicly."
-          echo "================================================"
-          echo "  URL  : $ARGOCD_URL"
-          echo "  User : admin"
-          echo -n "  Pass : "
-          kubectl -n argocd get secret argocd-initial-admin-secret \
-            -o jsonpath='{.data.password}' | base64 -d
-          echo ""
-          echo "================================================"
+          ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+            -o jsonpath='{.data.password}' | base64 -d)
+          APP_COUNT=$(kubectl -n argocd get applications --no-headers 2>/dev/null | wc -l)
+
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## ✅ ArgoCD déployé
+
+          | | |
+          |-|-|
+          | **URL** | [http://argocd.${INGRESS_HOST}](http://argocd.${INGRESS_HOST}) |
+          | **Utilisateur** | \`admin\` |
+          | **Mot de passe** | \`${ARGOCD_PASS}\` |
+          | **Applications enregistrées** | ${APP_COUNT} |
+          | **Load Balancer IP** | \`${LB_IP}\` |
+
+          > ℹ️ Lance maintenant le workflow **Deploy Apps** pour déployer toutes les applications.
+          EOF
