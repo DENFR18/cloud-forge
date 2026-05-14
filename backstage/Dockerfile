@@ -9,14 +9,14 @@ COPY package.json yarn.lock ./
 COPY packages/app/package.json ./packages/app/package.json
 COPY packages/backend/package.json ./packages/backend/package.json
 
-RUN yarn install --frozen-lockfile --network-timeout 600000
+RUN yarn install --no-frozen-lockfile --network-timeout 600000
 
 COPY . .
 
 RUN yarn workspace app build
 RUN yarn workspace backend build
 
-RUN yarn install --production --frozen-lockfile --network-timeout 600000
+RUN yarn install --production --no-frozen-lockfile --network-timeout 600000
 
 # Stage 2 – runtime
 FROM node:20-alpine

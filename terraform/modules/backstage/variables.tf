@@ -81,3 +81,10 @@ variable "postgres_storage" {
   type        = string
   default     = "5Gi"
 }
+
+variable "backend_secret" {
+  description = "Signing key for Backstage backend internal plugin-to-plugin auth"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

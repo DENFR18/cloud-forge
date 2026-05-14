@@ -47,6 +47,7 @@ resource "kubernetes_secret" "backstage_credentials" {
     KUBE_SA_TOKEN        = var.kube_sa_token
     ARGOCD_PASSWORD      = var.argocd_password
     BACKSTAGE_BASE_URL   = var.backstage_base_url
+    BACKEND_SECRET       = var.backend_secret
   }
 }
 

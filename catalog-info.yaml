@@ -1,0 +1,50 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: cloud-forge
+  description: Multi-tenant Kubernetes platform on Scaleway Kapsule
+  tags:
+    - kubernetes
+    - platform
+    - gitops
+spec:
+  owner: user:default/denfr18
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cloud-forge-platform
+  description: >
+    Cloud Forge multi-stack Kubernetes platform — Terraform (Scaleway Kapsule),
+    ArgoCD app-of-apps, NGINX Ingress, Prometheus/Grafana monitoring.
+  annotations:
+    github.com/project-slug: DENFR18/cloud-forge
+    argocd/app-name: root
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - kubernetes
+    - platform
+    - devops
+    - infrastructure
+spec:
+  type: platform
+  lifecycle: production
+  owner: user:default/denfr18
+  system: cloud-forge
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mlops-pipeline
+  description: MLOps pipeline project (external component — github.com/DENFR18/mlops-pipeline)
+  annotations:
+    github.com/project-slug: DENFR18/mlops-pipeline
+  tags:
+    - mlops
+    - python
+    - machine-learning
+spec:
+  type: service
+  lifecycle: production
+  owner: user:default/denfr18
+  system: cloud-forge

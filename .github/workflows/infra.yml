@@ -25,6 +25,7 @@ env:
   TF_VAR_backstage_postgres_password: ${{ secrets.BACKSTAGE_POSTGRES_PASSWORD }}
   TF_VAR_backstage_kube_sa_token: ${{ secrets.BACKSTAGE_KUBE_SA_TOKEN }}
   TF_VAR_backstage_argocd_password: ${{ secrets.BACKSTAGE_ARGOCD_ADMIN_PASSWORD }}
+  TF_VAR_backstage_backend_secret: ${{ secrets.BACKSTAGE_BACKEND_SECRET }}
 
 permissions:
   contents: read
