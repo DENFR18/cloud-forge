@@ -1,0 +1,42 @@
+namespace: backstage
+ingressHost: example.nip.io
+
+backstage:
+  image:
+    registry: ECR_REGISTRY
+    repository: backstage
+    tag: latest
+    pullPolicy: Always
+    pullSecret: scr-credentials
+  replicaCount: 1
+  containerPort: 7007
+  servicePort: 80
+  existingSecret: backstage-credentials
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+postgresql:
+  image: postgres:15-alpine
+  containerPort: 5432
+  servicePort: 5432
+  database: backstage
+  user: backstage
+  existingSecret: backstage-credentials
+  existingSecretKey: POSTGRES_PASSWORD
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  hostPrefix: backstage

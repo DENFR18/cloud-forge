@@ -19,6 +19,12 @@ env:
   SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
   AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  TF_VAR_backstage_github_client_id: ${{ secrets.BACKSTAGE_GITHUB_CLIENT_ID }}
+  TF_VAR_backstage_github_client_secret: ${{ secrets.BACKSTAGE_GITHUB_CLIENT_SECRET }}
+  TF_VAR_backstage_github_token: ${{ secrets.BACKSTAGE_GITHUB_TOKEN }}
+  TF_VAR_backstage_postgres_password: ${{ secrets.BACKSTAGE_POSTGRES_PASSWORD }}
+  TF_VAR_backstage_kube_sa_token: ${{ secrets.BACKSTAGE_KUBE_SA_TOKEN }}
+  TF_VAR_backstage_argocd_password: ${{ secrets.BACKSTAGE_ARGOCD_ADMIN_PASSWORD }}
 
 permissions:
   contents: read
@@ -95,11 +101,17 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
+      - name: Terraform Plan – infrastructure (cluster + registry)
+        run: terraform plan -target=module.kapsule -target=module.registry -out=tfplan-infra
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+      - name: Terraform Apply – infrastructure (cluster + registry)
+        run: terraform apply -auto-approve tfplan-infra
+
+      - name: Terraform Plan – Backstage prerequisites
+        run: terraform plan -out=tfplan-backstage
+
+      - name: Terraform Apply – Backstage prerequisites
+        run: terraform apply -auto-approve tfplan-backstage
 
       - name: Export kubeconfig
         run: |
