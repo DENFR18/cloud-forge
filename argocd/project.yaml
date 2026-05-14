@@ -20,6 +20,8 @@ spec:
       kind: Namespace
     - group: ""
       kind: ResourceQuota
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
