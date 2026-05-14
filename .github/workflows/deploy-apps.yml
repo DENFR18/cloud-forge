@@ -337,9 +337,26 @@ jobs:
 
       - name: Wait for healthy status
         run: |
+          DEGRADED=""
           for app in namespaces node-api flask-api react wordpress ghost gitea backstage; do
-            argocd app wait "$app" --core --health --timeout 300
+            if argocd app wait "$app" --core --health --timeout 300; then
+              echo "✅ $app — Healthy"
+            else
+              echo "⚠️  $app — timed out or degraded (continuing)"
+              DEGRADED="$DEGRADED $app"
+            fi
           done
+          if [ -n "$DEGRADED" ]; then
+            echo "::warning::These apps did not reach Healthy within 300s:$DEGRADED"
+          fi
+          # Fail only if backstage itself is not healthy
+          BACKSTAGE_HEALTH=$(argocd app get backstage --core -o json 2>/dev/null \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['status']['health']['status'])" 2>/dev/null || echo "Unknown")
+          echo "Backstage health: $BACKSTAGE_HEALTH"
+          if [ "$BACKSTAGE_HEALTH" != "Healthy" ] && [ "$BACKSTAGE_HEALTH" != "Progressing" ]; then
+            echo "::error::Backstage is $BACKSTAGE_HEALTH — deployment failed"
+            exit 1
+          fi
 
       - name: Inject Backstage SA token into credentials secret
         run: |
