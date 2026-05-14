@@ -166,6 +166,28 @@ jobs:
           docker push ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }}
           docker push ${{ steps.get-registry.outputs.registry }}/react:latest
 
+      - name: Build backstage
+        run: |
+          docker build \
+            -t ${{ steps.get-registry.outputs.registry }}/backstage:${{ steps.tag.outputs.tag }} \
+            -t ${{ steps.get-registry.outputs.registry }}/backstage:latest \
+            backstage
+
+      - name: Trivy scan – backstage
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.get-registry.outputs.registry }}/backstage:${{ steps.tag.outputs.tag }}
+          format: sarif
+          output: trivy-backstage.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+          ignore-unfixed: true
+
+      - name: Push backstage
+        run: |
+          docker push ${{ steps.get-registry.outputs.registry }}/backstage:${{ steps.tag.outputs.tag }}
+          docker push ${{ steps.get-registry.outputs.registry }}/backstage:latest
+
   deploy:
     name: Sync via ArgoCD
     runs-on: ubuntu-latest
@@ -235,7 +257,7 @@ jobs:
       - name: Seed registry pull secrets
         run: |
           REGISTRY="${{ needs.build-push.outputs.registry }}"
-          for NS in stack-react stack-node-api stack-flask-api stack-wordpress stack-ghost stack-gitea; do
+          for NS in stack-react stack-node-api stack-flask-api stack-wordpress stack-ghost stack-gitea backstage; do
             kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
             kubectl create secret docker-registry scr-credentials \
               --docker-server="$REGISTRY" \
@@ -274,7 +296,7 @@ jobs:
 
       - name: Wait for Applications to be created by root app
         run: |
-          for app in namespaces node-api flask-api react wordpress ghost gitea; do
+          for app in namespaces node-api flask-api react wordpress ghost gitea backstage; do
             for i in $(seq 1 30); do
               if kubectl -n argocd get application "$app" >/dev/null 2>&1; then
                 echo "Application $app exists"
@@ -300,16 +322,20 @@ jobs:
             argocd app set "$app" --core \
               -p ingressHost="$INGRESS_HOST"
           done
+          argocd app set backstage --core \
+            -p backstage.image.registry="$REGISTRY" \
+            -p backstage.image.tag="$IMAGE_TAG" \
+            -p ingressHost="$INGRESS_HOST"
 
       - name: Sync all applications
         run: |
-          for app in namespaces node-api flask-api react wordpress ghost gitea; do
+          for app in namespaces node-api flask-api react wordpress ghost gitea backstage; do
             argocd app sync "$app" --core --timeout 300
           done
 
       - name: Wait for healthy status
         run: |
-          for app in namespaces node-api flask-api react wordpress ghost gitea; do
+          for app in namespaces node-api flask-api react wordpress ghost gitea backstage; do
             argocd app wait "$app" --core --health --timeout 300
           done
 
@@ -330,5 +356,7 @@ jobs:
           echo "  Gitea      : http://gitea.$INGRESS_HOST"
           echo "  Node API   : http://$LB_IP/api"
           echo "  Flask API  : http://$LB_IP/flask"
+          echo ""
+          echo "  Backstage  : http://backstage.$INGRESS_HOST"
           echo ""
           echo "  ArgoCD UI : kubectl -n argocd port-forward svc/argocd-server 8080:443"
