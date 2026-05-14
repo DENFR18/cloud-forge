@@ -7,17 +7,17 @@ data:
   app-config.yaml: |
     app:
       title: Cloud Forge Developer Portal
-      baseUrl: http://${BACKSTAGE_BASE_URL}
+      baseUrl: ${BACKSTAGE_BASE_URL}
     organization:
       name: Cloud Forge
     backend:
-      baseUrl: http://${BACKSTAGE_BASE_URL}
+      baseUrl: ${BACKSTAGE_BASE_URL}
       listen:
         port: 7007
       csp:
         connect-src: ["'self'", 'http:', 'https:']
       cors:
-        origin: http://${BACKSTAGE_BASE_URL}
+        origin: ${BACKSTAGE_BASE_URL}
         methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
         credentials: true
       database:

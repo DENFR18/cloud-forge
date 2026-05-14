@@ -47,9 +47,9 @@ variable "argocd_password" {
 }
 
 variable "backstage_base_url" {
-  description = "Public base URL for Backstage (e.g. backstage.<LB_IP>.nip.io)"
+  description = "Public base URL for Backstage including protocol (e.g. http://backstage.<LB_IP>.nip.io)"
   type        = string
-  default     = "backstage.placeholder.nip.io"
+  default     = "http://backstage.placeholder.nip.io"
 }
 
 variable "quota_requests_cpu" {
