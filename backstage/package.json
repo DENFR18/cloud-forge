@@ -23,6 +23,6 @@
     "@types/react-dom": "^18"
   },
   "engines": {
-    "node": "18 || 20"
+    "node": "18 || 20 || 22"
   }
 }
