@@ -330,6 +330,8 @@ jobs:
       - name: Sync all applications
         run: |
           for app in namespaces node-api flask-api react wordpress ghost gitea backstage; do
+            # Cancel any in-progress operation (e.g. auto-sync) before manually syncing
+            argocd app terminate-op "$app" --core 2>/dev/null || true
             argocd app sync "$app" --core --timeout 300
           done
 
