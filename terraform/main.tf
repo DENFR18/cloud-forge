@@ -70,6 +70,7 @@ module "backstage" {
   kube_sa_token        = var.backstage_kube_sa_token
   argocd_password      = var.backstage_argocd_password
   backstage_base_url   = var.backstage_base_url
+  backend_secret       = var.backstage_backend_secret
 
   depends_on = [module.kapsule]
 }

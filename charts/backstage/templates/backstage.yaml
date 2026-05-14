@@ -62,6 +62,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.backstage.existingSecret }}
                   key: BACKSTAGE_BASE_URL
+            - name: BACKEND_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backstage.existingSecret }}
+                  key: BACKEND_SECRET
           volumeMounts:
             - name: backstage-config
               mountPath: /app/app-config.yaml

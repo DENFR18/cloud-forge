@@ -9,6 +9,9 @@ backend:
   baseUrl: ${BACKSTAGE_BASE_URL}
   listen:
     port: 7007
+  auth:
+    keys:
+      - secret: ${BACKEND_SECRET}
   csp:
     connect-src: ["'self'", 'http:', 'https:']
   cors:

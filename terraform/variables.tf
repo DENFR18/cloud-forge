@@ -65,3 +65,10 @@ variable "backstage_base_url" {
   type        = string
   default     = "http://backstage.placeholder.nip.io"
 }
+
+variable "backstage_backend_secret" {
+  description = "Backstage backend signing key for internal plugin-to-plugin auth"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
