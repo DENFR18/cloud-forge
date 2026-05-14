@@ -1,5 +1,5 @@
 # Stage 1 – build (TypeScript backend + Vite frontend)
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 RUN apk add --no-cache python3 make g++
 
@@ -19,7 +19,7 @@ RUN yarn workspace backend build
 RUN yarn install --production --no-frozen-lockfile --network-timeout 600000
 
 # Stage 2 – runtime
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache python3 py3-pip && \
     pip3 install mkdocs-techdocs-core --break-system-packages
