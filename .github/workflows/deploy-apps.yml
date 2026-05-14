@@ -339,6 +339,34 @@ jobs:
             argocd app wait "$app" --core --health --timeout 300
           done
 
+      - name: Inject Backstage SA token into credentials secret
+        run: |
+          # Wait for the SA token secret to be populated by the K8s token controller
+          echo "Waiting for backstage-k8s-reader-token to be populated..."
+          for i in $(seq 1 24); do
+            TOKEN=$(kubectl get secret backstage-k8s-reader-token \
+              -n backstage \
+              -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
+            if [ -n "$TOKEN" ]; then
+              echo "Token retrieved successfully"
+              break
+            fi
+            echo "Not ready yet ($i/24)..."
+            sleep 5
+          done
+          if [ -z "$TOKEN" ]; then
+            echo "WARNING: Could not retrieve SA token — KUBE_SA_TOKEN will remain empty"
+            exit 0
+          fi
+          # Patch the backstage-credentials secret in-place so Terraform state is not needed
+          TOKEN_B64=$(echo -n "$TOKEN" | base64 -w0)
+          kubectl patch secret backstage-credentials -n backstage \
+            -p "{\"data\":{\"KUBE_SA_TOKEN\":\"$TOKEN_B64\"}}"
+          echo "backstage-credentials patched with KUBE_SA_TOKEN"
+          # Restart Backstage pod to pick up the new token
+          kubectl rollout restart deployment/backstage -n backstage
+          kubectl rollout status deployment/backstage -n backstage --timeout=120s
+
       - name: Summary
         env:
           LB_IP: ${{ steps.lb.outputs.ip }}

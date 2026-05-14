@@ -3,4 +3,3 @@ kind: Kustomization
 
 resources:
   - backstage-application.yaml
-  - rbac.yaml
