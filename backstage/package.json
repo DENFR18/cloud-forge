@@ -1,0 +1,28 @@
+{
+  "name": "cloud-forge-backstage",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ]
+  },
+  "scripts": {
+    "start": "yarn workspace app start",
+    "start-backend": "yarn workspace backend start",
+    "build": "yarn workspaces run build",
+    "tsc": "tsc"
+  },
+  "devDependencies": {
+    "@backstage/cli": "^0.26.0",
+    "concurrently": "^8.0.0",
+    "typescript": "~5.3.0"
+  },
+  "resolutions": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18"
+  },
+  "engines": {
+    "node": "18 || 20"
+  }
+}

@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-config
+  namespace: {{ .Values.namespace }}
+data:
+  app-config.yaml: |
+    app:
+      title: Cloud Forge Developer Portal
+      baseUrl: http://${BACKSTAGE_BASE_URL}
+    organization:
+      name: Cloud Forge
+    backend:
+      baseUrl: http://${BACKSTAGE_BASE_URL}
+      listen:
+        port: 7007
+      csp:
+        connect-src: ["'self'", 'http:', 'https:']
+      cors:
+        origin: http://${BACKSTAGE_BASE_URL}
+        methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+        credentials: true
+      database:
+        client: pg
+        connection:
+          host: postgresql
+          port: 5432
+          user: {{ .Values.postgresql.user }}
+          password: ${POSTGRES_PASSWORD}
+          database: {{ .Values.postgresql.database }}
+    integrations:
+      github:
+        - host: github.com
+          token: ${GITHUB_TOKEN}
+    auth:
+      environment: production
+      providers:
+        github:
+          production:
+            clientId: ${GITHUB_CLIENT_ID}
+            clientSecret: ${GITHUB_CLIENT_SECRET}
+    catalog:
+      rules:
+        - allow: [Component, System, API, Resource, Location]
+      providers:
+        github:
+          DENFR18:
+            organization: DENFR18
+            catalogPath: /catalog-info.yaml
+            filters:
+              branch: main
+            schedule:
+              frequency: { minutes: 30 }
+              timeout: { minutes: 3 }
+      locations:
+        - type: file
+          target: /app/catalog-info.yaml
+        - type: url
+          target: https://github.com/DENFR18/mlops-pipeline/blob/main/catalog-info.yaml
+          rules:
+            - allow: [Component]
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - url: ${KUBE_API_URL}
+              name: kapsule-prod
+              authProvider: serviceAccount
+              skipTLSVerify: false
+              serviceAccountToken: ${KUBE_SA_TOKEN}
+    argocd:
+      username: admin
+      password: ${ARGOCD_PASSWORD}
+      appLocatorMethods:
+        - type: config
+          instances:
+            - name: cloud-forge
+              url: http://argocd-server.argocd.svc.cluster.local
+    techdocs:
+      builder: local
+      generator:
+        runIn: local
+      publisher:
+        type: local
