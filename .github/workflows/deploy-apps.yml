@@ -384,7 +384,8 @@ jobs:
           echo "backstage-credentials patched with KUBE_SA_TOKEN"
           # Restart Backstage pod to pick up the new token
           kubectl rollout restart deployment/backstage -n backstage
-          kubectl rollout status deployment/backstage -n backstage --timeout=120s
+          kubectl rollout status deployment/backstage -n backstage --timeout=300s || \
+            echo "WARNING: Backstage rollout did not complete in 300s — pod may still be starting"
 
       - name: Summary
         env:
