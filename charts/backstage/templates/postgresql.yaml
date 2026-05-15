@@ -28,6 +28,18 @@ spec:
                   key: {{ .Values.postgresql.existingSecretKey }}
           ports:
             - containerPort: {{ .Values.postgresql.containerPort }}
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.user | quote }}]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.user | quote }}]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 4
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data

@@ -27,6 +27,13 @@ spec:
                 sleep 2
               done
               echo "PostgreSQL is ready"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
       containers:
         - name: backstage
           image: "{{ .Values.backstage.image.registry }}/{{ .Values.backstage.image.repository }}:{{ .Values.backstage.image.tag }}"
