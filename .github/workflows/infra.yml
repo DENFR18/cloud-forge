@@ -204,6 +204,13 @@ jobs:
             done
           done
 
+      - name: Remove stuck PVC from Terraform state
+        run: |
+          # If a previous destroy was interrupted, the PVC may still be in state
+          # but no longer exist in the cluster — remove it to unblock destroy.
+          terraform state rm module.backstage.kubernetes_persistent_volume_claim.postgres 2>/dev/null || true
+          terraform state rm module.backstage.kubernetes_namespace.backstage 2>/dev/null || true
+
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
 
