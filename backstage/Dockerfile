@@ -29,6 +29,9 @@ RUN apk add --no-cache python3 py3-pip && \
 
 WORKDIR /app
 
+# Root package.json required by @manypkg/find-root (workspace root detection)
+COPY --from=build /app/package.json ./
+
 # Production node_modules (hoisted workspace deps)
 COPY --from=build /app/node_modules ./node_modules
 
