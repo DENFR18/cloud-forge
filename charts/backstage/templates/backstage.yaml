@@ -41,19 +41,11 @@ spec:
           ports:
             - containerPort: {{ .Values.backstage.containerPort }}
           readinessProbe:
-            httpGet:
-              path: /.backstage/health/v1/readiness
-              port: {{ .Values.backstage.containerPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 6
-          livenessProbe:
-            httpGet:
-              path: /.backstage/health/v1/liveness
+            tcpSocket:
               port: {{ .Values.backstage.containerPort }}
             initialDelaySeconds: 60
             periodSeconds: 15
-            failureThreshold: 4
+            failureThreshold: 12
           env:
             - name: POSTGRES_PASSWORD
               valueFrom:
