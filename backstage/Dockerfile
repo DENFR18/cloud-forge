@@ -16,12 +16,12 @@ COPY . .
 RUN yarn workspace app build
 RUN yarn workspace backend build
 
-# Show build output for diagnostics
-RUN echo "=== packages/backend/dist ===" && ls -la packages/backend/dist/ && \
-    echo "=== index.cjs.js standalone ===" && (test -f packages/backend/dist/index.cjs.js && echo "EXISTS" || echo "NOT FOUND – is inside bundle.tar.gz") && \
-    echo "=== bundle.tar.gz contents (first 30 lines) ===" && tar tzf packages/backend/dist/bundle.tar.gz | head -30 && \
-    echo "=== node_modules/app ===" && ls -la node_modules/app && \
-    echo "=== packages/app/dist ===" && ls -la packages/app/dist | head -5
+# Diagnostics: what does the build actually produce?
+RUN echo "=== packages/backend/dist/ ===" && ls -la packages/backend/dist/ && \
+    echo "=== Is index.cjs.js standalone? ===" && \
+    (test -f packages/backend/dist/index.cjs.js && echo "YES standalone" || echo "NO - inside bundle.tar.gz") && \
+    echo "=== bundle.tar.gz first 20 entries ===" && \
+    tar tzf packages/backend/dist/bundle.tar.gz | head -20
 
 # Stage 2 – runtime
 FROM node:22-alpine
@@ -31,20 +31,21 @@ RUN apk add --no-cache python3 py3-pip && \
 
 WORKDIR /app
 
-# Copy full workspace from build.
-# Docker COPY follows symlinks, so node_modules/app becomes a real directory
-# containing all files from packages/app (including dist/ and package.json).
-# This makes require('app/package.json') resolvable for plugin-app-backend.
+# Copy the entire build workspace
 COPY --from=build /app ./
 
-# Extract bundle.tar.gz using -k (keep-old-files) so existing files from
-# the COPY above are NOT overwritten. This provides index.cjs.js (which is
-# not produced as a standalone file by backstage-cli) without corrupting
-# the node_modules/app directory that plugin-app-backend relies on.
-RUN tar xzf packages/backend/dist/bundle.tar.gz -k 2>/dev/null; \
+# Extract bundle.tar.gz unconditionally to guarantee packages/backend/dist/index.cjs.js
+# exists at the runtime entrypoint path. The extraction will overwrite node_modules
+# with production-only deps, so we then explicitly recreate node_modules/app as a
+# symlink to packages/app — plugin-app-backend needs require('app/package.json')
+# to resolve in order to locate the frontend dist.
+RUN tar xzf packages/backend/dist/bundle.tar.gz && \
     rm -f packages/backend/dist/bundle.tar.gz packages/backend/dist/skeleton.tar.gz && \
-    echo "=== dist after extraction ===" && ls -la packages/backend/dist/ && \
-    echo "=== node_modules/app after extraction ===" && ls packages/backend/../node_modules/app | head -5
+    rm -rf node_modules/app && \
+    ln -s /app/packages/app /app/node_modules/app && \
+    echo "=== Runtime dist/ ===" && ls -la packages/backend/dist/ && \
+    echo "=== Runtime node_modules/app ===" && ls -la node_modules/app && \
+    echo "=== Runtime packages/app/dist ===" && ls packages/app/dist | head -5
 
 EXPOSE 7007
 
