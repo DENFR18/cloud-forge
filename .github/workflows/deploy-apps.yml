@@ -59,19 +59,14 @@ jobs:
             helm template "$chart" >/dev/null
           done
 
-  build-push:
-    name: Build, Scan & Push Images to SCR
+  prepare:
+    name: Resolve registry endpoint
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     needs: [validate-yaml, validate-helm]
-    permissions:
-      contents: read
-      security-events: write
-
     outputs:
       registry: ${{ steps.get-registry.outputs.registry }}
       tag: ${{ steps.tag.outputs.tag }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,105 +89,66 @@ jobs:
         id: tag
         run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
+  build-push:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: prepare
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: node-api
+            context: apps/node-api
+          - app: flask-api
+            context: apps/flask-api
+          - app: react
+            context: apps/react
+          - app: backstage
+            context: backstage
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Scaleway Container Registry
-        env:
-          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
-          REGISTRY: ${{ steps.get-registry.outputs.registry }}
-        run: echo "$SCW_SECRET_KEY" | docker login "$REGISTRY" -u nologin --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ needs.prepare.outputs.registry }}
+          username: nologin
+          password: ${{ secrets.SCW_SECRET_KEY }}
 
-      - name: Build node-api
-        run: |
-          docker build \
-            -t ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }} \
-            -t ${{ steps.get-registry.outputs.registry }}/node-api:latest \
-            apps/node-api
+      - name: Build and push ${{ matrix.app }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ${{ needs.prepare.outputs.registry }}/${{ matrix.app }}:${{ needs.prepare.outputs.tag }}
+            ${{ needs.prepare.outputs.registry }}/${{ matrix.app }}:latest
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,scope=${{ matrix.app }},mode=max
 
-      - name: Trivy scan – node-api
+      - name: Trivy scan – ${{ matrix.app }}
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }}
+          image-ref: ${{ needs.prepare.outputs.registry }}/${{ matrix.app }}:${{ needs.prepare.outputs.tag }}
           format: sarif
-          output: trivy-node-api.sarif
+          output: trivy-${{ matrix.app }}.sarif
           severity: CRITICAL,HIGH
           exit-code: "0"
           ignore-unfixed: true
-
-      - name: Push node-api
-        run: |
-          docker push ${{ steps.get-registry.outputs.registry }}/node-api:${{ steps.tag.outputs.tag }}
-          docker push ${{ steps.get-registry.outputs.registry }}/node-api:latest
-
-      - name: Build flask-api
-        run: |
-          docker build \
-            -t ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }} \
-            -t ${{ steps.get-registry.outputs.registry }}/flask-api:latest \
-            apps/flask-api
-
-      - name: Trivy scan – flask-api
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }}
-          format: sarif
-          output: trivy-flask-api.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "0"
-          ignore-unfixed: true
-
-      - name: Push flask-api
-        run: |
-          docker push ${{ steps.get-registry.outputs.registry }}/flask-api:${{ steps.tag.outputs.tag }}
-          docker push ${{ steps.get-registry.outputs.registry }}/flask-api:latest
-
-      - name: Build react
-        run: |
-          docker build \
-            -t ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }} \
-            -t ${{ steps.get-registry.outputs.registry }}/react:latest \
-            apps/react
-
-      - name: Trivy scan – react
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }}
-          format: sarif
-          output: trivy-react.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "0"
-          ignore-unfixed: true
-
-      - name: Push react
-        run: |
-          docker push ${{ steps.get-registry.outputs.registry }}/react:${{ steps.tag.outputs.tag }}
-          docker push ${{ steps.get-registry.outputs.registry }}/react:latest
-
-      - name: Build backstage
-        run: |
-          docker build \
-            -t ${{ steps.get-registry.outputs.registry }}/backstage:${{ steps.tag.outputs.tag }} \
-            -t ${{ steps.get-registry.outputs.registry }}/backstage:latest \
-            backstage
-
-      - name: Trivy scan – backstage
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.get-registry.outputs.registry }}/backstage:${{ steps.tag.outputs.tag }}
-          format: sarif
-          output: trivy-backstage.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "0"
-          ignore-unfixed: true
-
-      - name: Push backstage
-        run: |
-          docker push ${{ steps.get-registry.outputs.registry }}/backstage:${{ steps.tag.outputs.tag }}
-          docker push ${{ steps.get-registry.outputs.registry }}/backstage:latest
 
   deploy:
     name: Sync via ArgoCD
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: build-push
+    needs: [prepare, build-push]
 
     steps:
       - name: Checkout
@@ -256,7 +212,7 @@ jobs:
 
       - name: Seed registry pull secrets
         run: |
-          REGISTRY="${{ needs.build-push.outputs.registry }}"
+          REGISTRY="${{ needs.prepare.outputs.registry }}"
           for NS in stack-react stack-node-api stack-flask-api stack-wordpress stack-ghost stack-gitea backstage; do
             kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
             kubectl create secret docker-registry scr-credentials \
@@ -309,8 +265,8 @@ jobs:
 
       - name: Override runtime parameters (registry, tag, ingress host)
         env:
-          REGISTRY: ${{ needs.build-push.outputs.registry }}
-          IMAGE_TAG: ${{ needs.build-push.outputs.tag }}
+          REGISTRY: ${{ needs.prepare.outputs.registry }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.tag }}
           INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
           for app in node-api flask-api react; do
@@ -391,7 +347,7 @@ jobs:
         env:
           LB_IP: ${{ steps.lb.outputs.ip }}
           INGRESS_HOST: ${{ steps.lb.outputs.host }}
-          IMAGE_TAG: ${{ needs.build-push.outputs.tag }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret \
             -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "n/a")

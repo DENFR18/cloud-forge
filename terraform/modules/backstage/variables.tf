@@ -55,25 +55,25 @@ variable "backstage_base_url" {
 variable "quota_requests_cpu" {
   description = "ResourceQuota requests.cpu"
   type        = string
-  default     = "1"
+  default     = "2"
 }
 
 variable "quota_requests_memory" {
   description = "ResourceQuota requests.memory"
   type        = string
-  default     = "1Gi"
+  default     = "1500Mi"
 }
 
 variable "quota_limits_cpu" {
   description = "ResourceQuota limits.cpu"
   type        = string
-  default     = "2"
+  default     = "4"
 }
 
 variable "quota_limits_memory" {
   description = "ResourceQuota limits.memory"
   type        = string
-  default     = "2Gi"
+  default     = "2500Mi"
 }
 
 variable "postgres_storage" {
