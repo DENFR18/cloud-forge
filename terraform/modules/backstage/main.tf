@@ -65,4 +65,14 @@ resource "kubernetes_persistent_volume_claim" "postgres" {
     }
   }
   wait_until_bound = false
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      kubectl patch pvc ${self.metadata[0].name} \
+        -n ${self.metadata[0].namespace} \
+        -p '{"metadata":{"finalizers":[]}}' \
+        --type=merge 2>/dev/null || true
+    EOT
+  }
 }
