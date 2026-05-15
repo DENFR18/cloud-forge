@@ -16,10 +16,14 @@ COPY . .
 RUN yarn workspace app build
 RUN yarn workspace backend build
 
-# Extract the backend bundle in the build stage (produces index.cjs.js from bundle.tar.gz)
-RUN tar xzf packages/backend/dist/bundle.tar.gz && \
-    rm packages/backend/dist/bundle.tar.gz packages/backend/dist/skeleton.tar.gz && \
-    echo "=== backend dist ===" && ls -la packages/backend/dist/
+# Diagnostic: confirm both the frontend bundle and the workspace symlink exist
+RUN echo "=== packages/app/dist ===" && ls -la packages/app/dist && \
+    echo "=== packages/backend/dist ===" && ls -la packages/backend/dist && \
+    echo "=== node_modules/app symlink ===" && ls -la node_modules/app && \
+    echo "=== node_modules/@backstage/plugin-app-backend ===" && \
+    ls -la node_modules/@backstage/plugin-app-backend && \
+    echo "=== plugin-app-backend version ===" && \
+    cat node_modules/@backstage/plugin-app-backend/package.json | grep '"version"'
 
 # Stage 2 – runtime
 FROM node:22-alpine
@@ -29,29 +33,10 @@ RUN apk add --no-cache python3 py3-pip && \
 
 WORKDIR /app
 
-# Root package.json required by @manypkg/find-root (workspace root detection)
-COPY --from=build /app/package.json ./
-
-# Production node_modules (hoisted workspace deps)
-COPY --from=build /app/node_modules ./node_modules
-
-# Compiled backend entry point
-COPY --from=build /app/packages/backend/dist ./packages/backend/dist
-COPY --from=build /app/packages/backend/node_modules ./packages/backend/node_modules
-
-# Frontend static assets served by @backstage/plugin-app-backend
-# package.json is required for workspace package discovery (plugin-app-backend/alpha)
-COPY --from=build /app/packages/app/package.json ./packages/app/package.json
-COPY --from=build /app/packages/app/dist ./packages/app/dist
-
-# bundle.tar.gz extraction in the build stage overwrites node_modules and removes
-# the yarn workspace symlink node_modules/app -> ../packages/app.
-# Without this symlink, require('app/package.json') fails and plugin-app-backend
-# cannot locate the frontend dist, causing silent 404 on GET /.
-RUN ln -sf /app/packages/app /app/node_modules/app
-
-COPY app-config.yaml ./app-config.yaml
-COPY catalog-info.yaml ./catalog-info.yaml
+# Copy the entire workspace (preserves yarn workspace symlinks and all packages).
+# Using a single COPY keeps node_modules/<workspace-package> symlinks pointing at
+# packages/<name>, which plugin-app-backend needs to resolve via require().
+COPY --from=build /app ./
 
 EXPOSE 7007
 
