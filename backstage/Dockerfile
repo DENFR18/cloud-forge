@@ -40,6 +40,8 @@ COPY --from=build /app/packages/backend/dist ./packages/backend/dist
 COPY --from=build /app/packages/backend/node_modules ./packages/backend/node_modules
 
 # Frontend static assets served by @backstage/plugin-app-backend
+# package.json is required for workspace package discovery (plugin-app-backend/alpha)
+COPY --from=build /app/packages/app/package.json ./packages/app/package.json
 COPY --from=build /app/packages/app/dist ./packages/app/dist
 
 COPY app-config.yaml ./app-config.yaml
