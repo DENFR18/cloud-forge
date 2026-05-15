@@ -176,8 +176,33 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
       - name: Terraform Init
         run: terraform init
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          terraform output -raw kubeconfig > ~/.kube/config 2>/dev/null && \
+            chmod 600 ~/.kube/config || echo "No kubeconfig available (cluster may already be gone)"
+
+      - name: Clean up Kubernetes workloads before destroy
+        run: |
+          # Delete ArgoCD apps to trigger Helm uninstall (removes pods that hold PVCs)
+          for app in backstage wordpress ghost gitea node-api flask-api react namespaces; do
+            kubectl -n argocd delete application "$app" --wait=true --timeout=60s 2>/dev/null || true
+          done
+          # Give pods time to terminate and release PVC finalizers
+          sleep 15
+          # Force-remove PVC protection finalizers if still stuck
+          for ns in backstage stack-wordpress stack-ghost; do
+            for pvc in $(kubectl get pvc -n "$ns" -o name 2>/dev/null); do
+              kubectl patch "$pvc" -n "$ns" \
+                -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+            done
+          done
 
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
