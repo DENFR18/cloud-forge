@@ -1,5 +1,5 @@
 namespace: backstage
-ingressHost: example.nip.io
+ingressHost: 51.15.203.192.nip.io
 
 backstage:
   image:
