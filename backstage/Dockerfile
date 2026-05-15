@@ -44,6 +44,12 @@ COPY --from=build /app/packages/backend/node_modules ./packages/backend/node_mod
 COPY --from=build /app/packages/app/package.json ./packages/app/package.json
 COPY --from=build /app/packages/app/dist ./packages/app/dist
 
+# bundle.tar.gz extraction in the build stage overwrites node_modules and removes
+# the yarn workspace symlink node_modules/app -> ../packages/app.
+# Without this symlink, require('app/package.json') fails and plugin-app-backend
+# cannot locate the frontend dist, causing silent 404 on GET /.
+RUN ln -sf /app/packages/app /app/node_modules/app
+
 COPY app-config.yaml ./app-config.yaml
 COPY catalog-info.yaml ./catalog-info.yaml
 
