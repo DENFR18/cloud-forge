@@ -21,9 +21,6 @@ RUN tar xzf packages/backend/dist/bundle.tar.gz && \
     rm packages/backend/dist/bundle.tar.gz packages/backend/dist/skeleton.tar.gz && \
     echo "=== backend dist ===" && ls -la packages/backend/dist/
 
-# Prune to production deps only
-RUN yarn install --production --no-frozen-lockfile --network-timeout 600000
-
 # Stage 2 – runtime
 FROM node:22-alpine
 
