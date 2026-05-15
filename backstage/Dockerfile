@@ -16,6 +16,8 @@ COPY . .
 RUN yarn workspace app build
 RUN yarn workspace backend build
 
+RUN echo "=== backend dist contents ===" && ls -la /app/packages/backend/dist/
+
 RUN yarn install --production --no-frozen-lockfile --network-timeout 600000
 
 # Stage 2 – runtime
@@ -37,4 +39,4 @@ EXPOSE 7007
 
 ENV NODE_ENV=production
 
-CMD ["node", "packages/backend/dist/index.cjs.js"]
+CMD ["sh", "-c", "for f in packages/backend/dist/index.cjs.js packages/backend/dist/index.js packages/backend/dist/index.cjs; do if [ -f \"$f\" ]; then exec node \"$f\"; fi; done; echo 'ERROR: no backend entry found in dist/'; ls -la packages/backend/dist/; exit 1"]
