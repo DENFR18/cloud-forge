@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.backstage.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: backstage
