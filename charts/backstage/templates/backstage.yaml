@@ -15,12 +15,38 @@ spec:
     spec:
       imagePullSecrets:
         - name: {{ .Values.backstage.image.pullSecret }}
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgresql {{ .Values.postgresql.servicePort }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready"
       containers:
         - name: backstage
           image: "{{ .Values.backstage.image.registry }}/{{ .Values.backstage.image.repository }}:{{ .Values.backstage.image.tag }}"
           imagePullPolicy: {{ .Values.backstage.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.backstage.containerPort }}
+          readinessProbe:
+            httpGet:
+              path: /.backstage/health/v1/readiness
+              port: {{ .Values.backstage.containerPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /.backstage/health/v1/liveness
+              port: {{ .Values.backstage.containerPort }}
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 4
           env:
             - name: POSTGRES_PASSWORD
               valueFrom:
