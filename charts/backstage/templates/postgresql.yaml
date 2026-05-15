@@ -26,6 +26,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.postgresql.existingSecret }}
                   key: {{ .Values.postgresql.existingSecretKey }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: {{ .Values.postgresql.containerPort }}
           readinessProbe:
