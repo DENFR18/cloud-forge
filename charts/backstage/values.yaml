@@ -1,5 +1,5 @@
 namespace: backstage
-ingressHost: 51.15.203.192.nip.io
+ingressHost: 51.158.120.216.nip.io
 
 backstage:
   image:
