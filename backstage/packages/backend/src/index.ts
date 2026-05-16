@@ -4,7 +4,8 @@ const backend = createBackend();
 
 backend.add(import('@backstage/plugin-app-backend'));
 backend.add(import('@backstage/plugin-catalog-backend'));
-backend.add(import('@backstage/plugin-catalog-backend-module-github'));
+// catalog-backend-module-github requires a non-empty GITHUB_TOKEN secret
+// backend.add(import('@backstage/plugin-catalog-backend-module-github'));
 backend.add(import('@backstage/plugin-auth-backend'));
 backend.add(import('@backstage/plugin-auth-backend-module-github-provider'));
 backend.add(import('@backstage/plugin-proxy-backend'));
