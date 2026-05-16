@@ -2,6 +2,13 @@ import { createBackend } from '@backstage/backend-defaults';
 
 const backend = createBackend();
 
+const FEATURE_TYPE = '@backstage/BackendFeature';
+
+const isFeature = (val: unknown): boolean =>
+  !!val &&
+  (typeof val === 'object' || typeof val === 'function') &&
+  (val as any).$$type === FEATURE_TYPE;
+
 const plugins: Array<[string, () => Promise<any>]> = [
   ['app-backend',                   () => import('@backstage/plugin-app-backend')],
   ['catalog-backend',               () => import('@backstage/plugin-catalog-backend')],
@@ -20,20 +27,35 @@ const plugins: Array<[string, () => Promise<any>]> = [
   for (const [name, loader] of plugins) {
     try {
       const mod: any = await loader();
-      const feature = mod?.default;
-      if (!feature) {
-        process.stderr.write(
-          `[plugin-load] SKIP ${name}: default export is ${typeof feature} (exports: ${Object.keys(mod).join(',')})\n`,
-        );
+      const entries = Object.entries(mod as object);
+
+      // Search all exports for a BackendFeature (default first, then named)
+      let found: { key: string; val: any } | undefined;
+      for (const [key, val] of entries) {
+        if (isFeature(val)) {
+          found = { key, val };
+          break;
+        }
+      }
+
+      if (!found) {
+        const summary = entries
+          .map(([k, v]) => `${k}=${typeof v}:$$type=${(v as any)?.$$type ?? 'n/a'}`)
+          .join(' | ');
+        process.stderr.write(`[plugin-load] SKIP ${name}: no BackendFeature found — ${summary}\n`);
         continue;
       }
-      backend.add(feature);
-      process.stderr.write(`[plugin-load] OK   ${name}\n`);
+
+      backend.add(found.val);
+      process.stderr.write(
+        `[plugin-load] OK   ${name} (export: ${found.key})\n`,
+      );
     } catch (err: any) {
       process.stderr.write(
         `[plugin-load] FAIL ${name}: ${err?.code ?? ''} ${err?.message ?? err}\n`,
       );
     }
   }
+
   backend.start();
 })();
