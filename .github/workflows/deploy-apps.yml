@@ -315,9 +315,21 @@ jobs:
           fi
 
       - name: Inject Backstage SA token into credentials secret
+        env:
+          INGRESS_HOST: ${{ steps.lb.outputs.host }}
         run: |
+          # Patch BACKSTAGE_BASE_URL to the live ingress URL so the frontend
+          # bundle and backend CORS use the correct host (Terraform default
+          # is a placeholder when TF_VAR_backstage_base_url is not provided).
+          BASE_URL="http://backstage.${INGRESS_HOST}"
+          BASE_URL_B64=$(echo -n "$BASE_URL" | base64 -w0)
+          kubectl patch secret backstage-credentials -n backstage \
+            -p "{\"data\":{\"BACKSTAGE_BASE_URL\":\"$BASE_URL_B64\"}}"
+          echo "backstage-credentials patched with BACKSTAGE_BASE_URL=$BASE_URL"
+
           # Wait for the SA token secret to be populated by the K8s token controller
           echo "Waiting for backstage-k8s-reader-token to be populated..."
+          TOKEN=""
           for i in $(seq 1 24); do
             TOKEN=$(kubectl get secret backstage-k8s-reader-token \
               -n backstage \
@@ -329,16 +341,16 @@ jobs:
             echo "Not ready yet ($i/24)..."
             sleep 5
           done
-          if [ -z "$TOKEN" ]; then
+          if [ -n "$TOKEN" ]; then
+            TOKEN_B64=$(echo -n "$TOKEN" | base64 -w0)
+            kubectl patch secret backstage-credentials -n backstage \
+              -p "{\"data\":{\"KUBE_SA_TOKEN\":\"$TOKEN_B64\"}}"
+            echo "backstage-credentials patched with KUBE_SA_TOKEN"
+          else
             echo "WARNING: Could not retrieve SA token — KUBE_SA_TOKEN will remain empty"
-            exit 0
           fi
-          # Patch the backstage-credentials secret in-place so Terraform state is not needed
-          TOKEN_B64=$(echo -n "$TOKEN" | base64 -w0)
-          kubectl patch secret backstage-credentials -n backstage \
-            -p "{\"data\":{\"KUBE_SA_TOKEN\":\"$TOKEN_B64\"}}"
-          echo "backstage-credentials patched with KUBE_SA_TOKEN"
-          # Restart Backstage pod to pick up the new token
+
+          # Restart Backstage pod to pick up the new secret values
           kubectl rollout restart deployment/backstage -n backstage
           kubectl rollout status deployment/backstage -n backstage --timeout=300s || \
             echo "WARNING: Backstage rollout did not complete in 300s — pod may still be starting"
