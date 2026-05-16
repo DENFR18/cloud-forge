@@ -45,7 +45,9 @@ RUN tar xzf packages/backend/dist/bundle.tar.gz && \
     ln -s /app/packages/app /app/node_modules/app && \
     echo "=== Runtime dist/ ===" && ls -la packages/backend/dist/ && \
     echo "=== Runtime node_modules/app ===" && ls -la node_modules/app && \
-    echo "=== Runtime packages/app/dist ===" && ls packages/app/dist | head -5
+    echo "=== Runtime packages/app/dist ===" && ls packages/app/dist | head -5 && \
+    echo "=== Key @backstage package versions ===" && \
+    node -e "['@backstage/backend-app-api','@backstage/backend-defaults','@backstage/plugin-catalog-backend','@backstage/plugin-app-backend','@backstage/plugin-auth-backend'].forEach(p=>{try{const v=require(p+'/package.json').version;console.log(p+'@'+v);}catch(e){console.log(p+': not found')}})"
 
 EXPOSE 7007
 
