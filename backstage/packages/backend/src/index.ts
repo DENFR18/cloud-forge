@@ -3,6 +3,7 @@ import { createBackend } from '@backstage/backend-defaults';
 const backend = createBackend();
 
 backend.add(import('@backstage/plugin-app-backend'));
+backend.add(import('@backstage/plugin-metrics-backend'));
 backend.add(import('@backstage/plugin-catalog-backend'));
 // catalog-backend-module-github requires a non-empty GITHUB_TOKEN secret
 // backend.add(import('@backstage/plugin-catalog-backend-module-github'));
